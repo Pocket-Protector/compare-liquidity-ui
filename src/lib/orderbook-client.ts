@@ -35,8 +35,15 @@ type FetchOrderbookOptions = {
   hyperliquid?: HyperliquidBookOptions;
 };
 
+const PROXIED_HOSTS = new Set(["fapi.binance.com", "api.bybit.com"]);
+
 function withProxy(url: string): string {
   if (!PROXY_PREFIX) return url;
+  try {
+    if (!PROXIED_HOSTS.has(new URL(url).hostname)) return url;
+  } catch {
+    return url;
+  }
   return `${PROXY_PREFIX}${encodeURIComponent(url)}`;
 }
 
