@@ -1,12 +1,13 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { EXCHANGES, EXCHANGE_COLORS, EXCHANGE_LABELS } from "@/lib/constants";
+import { EXCHANGE_COLORS, EXCHANGE_LABELS } from "@/lib/constants";
 import type { ExchangeKey, ExchangeRecord, ExchangeStatus, SpreadUnit } from "@/lib/types";
 
 interface SpreadCompareChartProps {
   statuses: ExchangeRecord<ExchangeStatus>;
   spreadUnit: SpreadUnit;
+  activeExchanges: ExchangeKey[];
 }
 
 interface SpreadDatum {
@@ -41,8 +42,8 @@ function SpreadTooltip({ active, payload, spreadUnit }: any) {
   );
 }
 
-export function SpreadCompareChart({ statuses, spreadUnit }: SpreadCompareChartProps) {
-  const data: SpreadDatum[] = EXCHANGES
+export function SpreadCompareChart({ statuses, spreadUnit, activeExchanges }: SpreadCompareChartProps) {
+  const data: SpreadDatum[] = activeExchanges
     .map((exchange) => {
       const spreadBps = statuses[exchange].analysis?.spreadBps;
       if (!Number.isFinite(spreadBps)) return null;

@@ -1,9 +1,9 @@
 "use client";
 
 import { Fragment, type CSSProperties } from "react";
-import { EXCHANGES, EXCHANGE_COLORS, EXCHANGE_LABELS, NOTIONAL_TIERS } from "@/lib/constants";
+import { EXCHANGE_COLORS, EXCHANGE_LABELS, NOTIONAL_TIERS } from "@/lib/constants";
 import { formatTier, formatUsd } from "@/lib/format";
-import type { ExchangeRecord, ExchangeStatus, LiquidityAnalysis, SlippageResult, SpreadUnit, TickerKey } from "@/lib/types";
+import type { ExchangeKey, ExchangeRecord, ExchangeStatus, LiquidityAnalysis, SlippageResult, SpreadUnit, TickerKey } from "@/lib/types";
 import { PulseDot } from "./pulse-dot";
 
 function formatHyperliquidMeta(analysis: LiquidityAnalysis): string {
@@ -31,6 +31,7 @@ interface DataTableProps {
   ticker: TickerKey;
   lastRefreshAt: number | null;
   spreadUnit: SpreadUnit;
+  activeExchanges: ExchangeKey[];
   onToggleUnit: () => void;
 }
 
@@ -46,14 +47,14 @@ function renderCell(point: SlippageResult | undefined, unit: SpreadUnit): string
   return `${value} (partial ${formatUsd(point.filledNotional, true)})`;
 }
 
-export function DataTable({ statuses, ticker, lastRefreshAt, spreadUnit, onToggleUnit }: DataTableProps) {
+export function DataTable({ statuses, ticker, lastRefreshAt, spreadUnit, activeExchanges, onToggleUnit }: DataTableProps) {
   return (
     <section className="panel">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <p className="label">Detailed analytics</p>
           <h3 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">{ticker} Slippage Breakdown</h3>
-          <p className="text-sm text-[var(--text-secondary)]">Spread and execution depth for six venues, refreshed every 1.5s.</p>
+          <p className="text-sm text-[var(--text-secondary)]">Spread and execution depth for selected exchanges, refreshed every 1.5s.</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -89,7 +90,7 @@ export function DataTable({ statuses, ticker, lastRefreshAt, spreadUnit, onToggl
           </thead>
 
           <tbody>
-            {EXCHANGES.map((exchange) => {
+            {activeExchanges.map((exchange) => {
               const analysis = statuses[exchange].analysis;
               const rowHoverStyle = {
                 "--exchange-row-hover": `${EXCHANGE_COLORS[exchange]}3d`,

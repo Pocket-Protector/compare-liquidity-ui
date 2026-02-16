@@ -1,14 +1,17 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { EXCHANGES, EXCHANGE_COLORS, EXCHANGE_LABELS, NOTIONAL_TIERS } from "@/lib/constants";
+import { EXCHANGE_COLORS, EXCHANGE_LABELS, NOTIONAL_TIERS } from "@/lib/constants";
 import { formatTier } from "@/lib/format";
 import type { ExchangeKey, ExchangeRecord, ExchangeStatus, SpreadUnit } from "@/lib/types";
+import type { SlippageMedianDatum } from "@/hooks/use-slippage-history";
 
 interface SlippageChartProps {
   side: "ask" | "bid";
   statuses: ExchangeRecord<ExchangeStatus>;
   spreadUnit: SpreadUnit;
+  activeExchanges: ExchangeKey[];
+  historicalData?: SlippageMedianDatum[];
 }
 
 type ChartDatum = {
@@ -83,22 +86,20 @@ function CustomTooltip({ active, payload, label, spreadUnit }: any) {
   );
 }
 
-export function SlippageChart({ side, statuses, spreadUnit }: SlippageChartProps) {
-  const data: ChartDatum[] = NOTIONAL_TIERS.map((tier, idx) => {
-    const row: ChartDatum = {
-      tier: formatTier(tier),
-    };
+export function SlippageChart({ side, statuses, spreadUnit, activeExchanges, historicalData }: SlippageChartProps) {
+  const data: ChartDatum[] = historicalData
+    ? historicalData
+    : NOTIONAL_TIERS.map((tier, idx) => {
+        const row: ChartDatum = { tier: formatTier(tier) };
+        for (const exchange of activeExchanges) {
+          const analysis = statuses[exchange].analysis;
+          const point = side === "ask" ? analysis?.asks[idx] : analysis?.bids[idx];
+          row[exchange] = point ? Number(point.slippageBps.toFixed(2)) : null;
+        }
+        return row;
+      });
 
-    for (const exchange of EXCHANGES) {
-      const analysis = statuses[exchange].analysis;
-      const point = side === "ask" ? analysis?.asks[idx] : analysis?.bids[idx];
-      row[exchange] = point ? Number(point.slippageBps.toFixed(2)) : null;
-    }
-
-    return row;
-  });
-
-  const hasData = data.some((row) => EXCHANGES.some((exchange) => typeof row[exchange] === "number"));
+  const hasData = data.some((row) => activeExchanges.some((exchange) => typeof row[exchange] === "number"));
 
   if (!hasData) {
     return (
@@ -134,7 +135,7 @@ export function SlippageChart({ side, statuses, spreadUnit }: SlippageChartProps
           />
           <Legend wrapperStyle={{ color: "#9fb0d1", fontSize: "12px" }} />
 
-          {EXCHANGES.map((exchange) => (
+          {activeExchanges.map((exchange) => (
             <Bar
               key={exchange}
               dataKey={exchange}

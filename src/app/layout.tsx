@@ -14,8 +14,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Compare Liquidity",
-  description: "Real-time perpetual DEX liquidity comparison dashboard.",
+  title: "Liquidity Comparison",
+  description: "Real-time perps DEX & CEX liquidity comparison dashboard.",
 };
 
 export default function RootLayout({
