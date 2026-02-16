@@ -1,108 +1,62 @@
 "use client";
 
 import { EXCHANGES, EXCHANGE_COLORS, EXCHANGE_LABELS } from "@/lib/constants";
-import { formatPrice } from "@/lib/format";
-import type {
-  ExchangeRecord,
-  ExchangeStatus,
-  SpreadUnit,
-  TickerKey,
-} from "@/lib/types";
+import type { ExchangeKey, ExchangeRecord, ExchangeStatus } from "@/lib/types";
 import { PulseDot } from "./pulse-dot";
 
 interface SpreadCardsProps {
   statuses: ExchangeRecord<ExchangeStatus>;
-  ticker: TickerKey;
-  spreadUnit: SpreadUnit;
-}
-
-function formatSpread(bps: number, unit: SpreadUnit): string {
-  if (!Number.isFinite(bps)) return "--";
-  if (unit === "pct") return `${(bps / 100).toFixed(4)}%`;
-  return `${bps.toFixed(2)} bps`;
+  activeExchanges: ExchangeKey[];
+  onToggleExchange: (exchange: ExchangeKey) => void;
 }
 
 export function SpreadCards({
   statuses,
-  ticker,
-  spreadUnit,
+  activeExchanges,
+  onToggleExchange,
 }: SpreadCardsProps) {
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {EXCHANGES.map((exchange) => {
-        const status = statuses[exchange];
-        const analysis = status.analysis;
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-sm text-[var(--text-secondary)]">
+          Enable or disable each exchange
+        </p>
+      </div>
 
-        return (
-          <article
-            key={exchange}
-            className="card-surface overflow-hidden"
-            style={{ borderColor: `${EXCHANGE_COLORS[exchange]}66` }}
-          >
-            <div
-              className="h-1 w-full"
+      <div className="flex flex-wrap gap-2">
+        {EXCHANGES.map((exchange) => {
+          const status = statuses[exchange];
+          const isActive = activeExchanges.includes(exchange);
+          const color = EXCHANGE_COLORS[exchange];
+
+          return (
+            <button
+              key={exchange}
+              type="button"
+              aria-pressed={isActive}
+              onClick={() => onToggleExchange(exchange)}
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-left transition ${
+                isActive
+                  ? "text-[var(--text-primary)] shadow-[0_0_0_1px_rgba(232,238,251,0.08)_inset]"
+                  : "text-[var(--text-secondary)] opacity-70 hover:opacity-100"
+              }`}
               style={{
-                background: `linear-gradient(90deg, ${EXCHANGE_COLORS[exchange]} 0%, transparent 100%)`,
+                borderColor: isActive ? color : "var(--border)",
+                backgroundColor: isActive ? `${color}1f` : "transparent",
               }}
-            />
-
-            <div className="space-y-3 p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="text-xl font-semibold tracking-tight text-[var(--text-primary)]">
-                    {EXCHANGE_LABELS[exchange]}
-                  </h3>
-                  <span className="data-mono text-xs text-[var(--text-muted)]">
-                    {ticker}-PERP
-                  </span>
-                </div>
-                <PulseDot timestamp={status.lastUpdated} />
-              </div>
-
-              {analysis ? (
-                <div className="data-mono grid grid-cols-2 gap-2 text-sm text-[var(--text-secondary)]">
-                  <div>
-                    <p className="label">Mid</p>
-                    <p className="mt-1 text-[var(--text-primary)]">
-                      {formatPrice(analysis.midPrice)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="label">Spread</p>
-                    <p className="mt-1 text-[var(--text-primary)]">
-                      {formatSpread(analysis.spreadBps, spreadUnit)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="label">Best Bid</p>
-                    <p className="mt-1 text-[var(--text-primary)]">
-                      {formatPrice(analysis.bestBid)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="label">Best Ask</p>
-                    <p className="mt-1 text-[var(--text-primary)]">
-                      {formatPrice(analysis.bestAsk)}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-1 text-sm text-[var(--text-secondary)]">
-                  <p>
-                    {status.loading
-                      ? "Fetching order book..."
-                      : "No data available."}
-                  </p>
-                </div>
-              )}
-
-              {status.error ? (
-                <p className="text-xs text-[var(--danger)]">{status.error}</p>
-              ) : null}
-            </div>
-          </article>
-        );
-      })}
-    </section>
+            >
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: color }}
+              />
+              <span className="text-sm font-medium">
+                {EXCHANGE_LABELS[exchange]}
+              </span>
+              <PulseDot timestamp={status.lastUpdated} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

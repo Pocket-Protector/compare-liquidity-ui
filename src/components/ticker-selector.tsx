@@ -7,9 +7,16 @@ import type { TickerKey } from "@/lib/types";
 interface TickerSelectorProps {
   value: TickerKey;
   onChange: (ticker: TickerKey) => void;
+  label?: string;
+  allowedTickers?: readonly TickerKey[];
 }
 
-export function TickerSelector({ value, onChange }: TickerSelectorProps) {
+export function TickerSelector({
+  value,
+  onChange,
+  label = "Ticker",
+  allowedTickers,
+}: TickerSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -28,13 +35,26 @@ export function TickerSelector({ value, onChange }: TickerSelectorProps) {
     };
   }, []);
 
+  const baseTickers = useMemo(() => {
+    if (!allowedTickers || allowedTickers.length === 0) {
+      return TRACKED_TICKERS;
+    }
+
+    const allowedSet = new Set(
+      allowedTickers.map((ticker) => ticker.toUpperCase()),
+    );
+    return TRACKED_TICKERS.filter((row) =>
+      allowedSet.has(row.ticker.toUpperCase()),
+    );
+  }, [allowedTickers]);
+
   const filteredTickers = useMemo(() => {
     const trimmed = query.trim().toLowerCase();
-    if (!trimmed) return TRACKED_TICKERS;
-    return TRACKED_TICKERS.filter((row) =>
+    if (!trimmed) return baseTickers;
+    return baseTickers.filter((row) =>
       row.ticker.toLowerCase().includes(trimmed),
     );
-  }, [query]);
+  }, [baseTickers, query]);
 
   const onSelect = (ticker: TickerKey) => {
     onChange(ticker);
@@ -44,7 +64,7 @@ export function TickerSelector({ value, onChange }: TickerSelectorProps) {
 
   return (
     <div ref={wrapperRef} className="relative w-full max-w-sm">
-      <p className="label mb-2">Ticker</p>
+      <p className="label mb-2">{label}</p>
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}

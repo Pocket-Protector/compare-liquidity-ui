@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { EXCHANGES, EXCHANGE_COLORS, EXCHANGE_LABELS } from "@/lib/constants";
+import { EXCHANGE_COLORS, EXCHANGE_LABELS } from "@/lib/constants";
 import type {
   ExchangeKey,
   ExchangeRecord,
@@ -21,6 +21,7 @@ import type {
 interface SpreadCompareChartProps {
   statuses: ExchangeRecord<ExchangeStatus>;
   spreadUnit: SpreadUnit;
+  activeExchanges: ExchangeKey[];
 }
 
 interface SpreadDatum {
@@ -71,18 +72,20 @@ function SpreadTooltip({ active, payload, spreadUnit }: any) {
 export function SpreadCompareChart({
   statuses,
   spreadUnit,
+  activeExchanges,
 }: SpreadCompareChartProps) {
-  const data: SpreadDatum[] = EXCHANGES.map((exchange) => {
-    const spreadBps = statuses[exchange].analysis?.spreadBps;
-    if (!Number.isFinite(spreadBps)) return null;
+  const data: SpreadDatum[] = activeExchanges
+    .map((exchange) => {
+      const spreadBps = statuses[exchange].analysis?.spreadBps;
+      if (!Number.isFinite(spreadBps)) return null;
 
-    return {
-      exchange,
-      label: EXCHANGE_LABELS[exchange],
-      spreadBps,
-      color: EXCHANGE_COLORS[exchange],
-    };
-  })
+      return {
+        exchange,
+        label: EXCHANGE_LABELS[exchange],
+        spreadBps,
+        color: EXCHANGE_COLORS[exchange],
+      };
+    })
     .filter((row): row is SpreadDatum => Boolean(row))
     .sort((a, b) => a.spreadBps - b.spreadBps);
 
