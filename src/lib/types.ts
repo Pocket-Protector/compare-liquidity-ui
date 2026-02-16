@@ -1,4 +1,10 @@
-export type ExchangeKey = "hyperliquid" | "dydx" | "lighter" | "asterdex" | "binance" | "bybit";
+export type ExchangeKey =
+  | "hyperliquid"
+  | "dydx"
+  | "lighter"
+  | "asterdex"
+  | "binance"
+  | "bybit";
 export type TickerKey = string;
 export type BookSide = "bid" | "ask";
 

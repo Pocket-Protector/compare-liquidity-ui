@@ -15,7 +15,11 @@ const MODE_OPTIONS: Array<{ value: ConsoleMode; label: string }> = [
   { value: "historical", label: "Historical" },
 ];
 
-export function ModeSelector({ value, onChange, label = "Mode" }: ModeSelectorProps) {
+export function ModeSelector({
+  value,
+  onChange,
+  label = "Mode",
+}: ModeSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
@@ -33,7 +37,8 @@ export function ModeSelector({ value, onChange, label = "Mode" }: ModeSelectorPr
     };
   }, []);
 
-  const selected = MODE_OPTIONS.find((option) => option.value === value) ?? MODE_OPTIONS[0];
+  const selected =
+    MODE_OPTIONS.find((option) => option.value === value) ?? MODE_OPTIONS[0];
 
   return (
     <div ref={wrapperRef} className="relative w-full max-w-sm">
@@ -43,8 +48,12 @@ export function ModeSelector({ value, onChange, label = "Mode" }: ModeSelectorPr
         onClick={() => setIsOpen((prev) => !prev)}
         className="card-surface flex w-full items-center justify-between px-4 py-3 text-left transition hover:border-[color:var(--border-strong)]"
       >
-        <span className="data-mono text-lg font-medium text-[var(--text-primary)]">{selected.label}</span>
-        <span className="text-xs text-[var(--text-secondary)]">{isOpen ? "Close" : "Select"}</span>
+        <span className="data-mono text-lg font-medium text-[var(--text-primary)]">
+          {selected.label}
+        </span>
+        <span className="text-xs text-[var(--text-secondary)]">
+          {isOpen ? "Close" : "Select"}
+        </span>
       </button>
 
       {isOpen ? (
@@ -59,7 +68,9 @@ export function ModeSelector({ value, onChange, label = "Mode" }: ModeSelectorPr
                     setIsOpen(false);
                   }}
                   className={`w-full rounded-md px-3 py-2 text-left text-sm transition hover:bg-[color:rgba(79,140,255,0.18)] ${
-                    option.value === value ? "bg-[color:rgba(79,140,255,0.2)] text-[var(--text-primary)]" : "text-[var(--text-secondary)]"
+                    option.value === value
+                      ? "bg-[color:rgba(79,140,255,0.2)] text-[var(--text-primary)]"
+                      : "text-[var(--text-secondary)]"
                   }`}
                 >
                   {option.label}

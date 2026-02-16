@@ -18,19 +18,19 @@ type LighterMarketsResponse = {
   }>;
 };
 
-let lighterMarketCache:
-  | {
-      expiresAt: number;
-      bySymbol: Record<string, number>;
-    }
-  | null = null;
+let lighterMarketCache: {
+  expiresAt: number;
+  bySymbol: Record<string, number>;
+} | null = null;
 
 function badRequest(message: string): NextResponse {
   return NextResponse.json({ error: message }, { status: 400 });
 }
 
 async function refreshLighterMarketCache(): Promise<void> {
-  const response = await fetch(`${LIGHTER_BASE_URL}/orderBooks`, { cache: "no-store" });
+  const response = await fetch(`${LIGHTER_BASE_URL}/orderBooks`, {
+    cache: "no-store",
+  });
   if (!response.ok) {
     throw new Error(`Lighter market list fetch failed (${response.status})`);
   }
@@ -66,7 +66,10 @@ async function resolveLighterMarketId(symbol: string): Promise<number> {
   return marketId;
 }
 
-async function buildUpstreamRequest(exchange: ExchangeKey, symbol: string): Promise<{ url: string; init?: RequestInit }> {
+async function buildUpstreamRequest(
+  exchange: ExchangeKey,
+  symbol: string,
+): Promise<{ url: string; init?: RequestInit }> {
   switch (exchange) {
     case "hyperliquid":
       return {
@@ -146,7 +149,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           error: `Upstream ${exchangeParam} request failed with status ${response.status}`,
           details: details.slice(0, 300),
         },
-        { status: 502 }
+        { status: 502 },
       );
     }
 
@@ -157,12 +160,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected proxy error";
+    const message =
+      error instanceof Error ? error.message : "Unexpected proxy error";
     return NextResponse.json(
       {
         error: message,
       },
-      { status: 502 }
+      { status: 502 },
     );
   }
 }

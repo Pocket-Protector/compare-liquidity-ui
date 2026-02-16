@@ -26,7 +26,10 @@ function parseLevels(levels: LighterWsLevel[] | undefined): BookLevel[] {
       px: Number.parseFloat(l.price),
       sz: Number.parseFloat(l.size),
     }))
-    .filter((l) => Number.isFinite(l.px) && Number.isFinite(l.sz) && l.px > 0 && l.sz > 0);
+    .filter(
+      (l) =>
+        Number.isFinite(l.px) && Number.isFinite(l.sz) && l.px > 0 && l.sz > 0,
+    );
 }
 
 /**
@@ -36,7 +39,9 @@ function parseLevels(levels: LighterWsLevel[] | undefined): BookLevel[] {
  * The WS endpoint returns all price levels with no depth cap, unlike the REST
  * API which is hard-limited to 250 individual orders per side.
  */
-export async function fetchLighterBookWs(ticker: TickerKey): Promise<NormalizedBook> {
+export async function fetchLighterBookWs(
+  ticker: TickerKey,
+): Promise<NormalizedBook> {
   const symbol = TICKER_MAP[ticker].lighter;
   const marketId = await resolveLighterMarketId(symbol);
 
@@ -49,13 +54,20 @@ export async function fetchLighterBookWs(ticker: TickerKey): Promise<NormalizedB
     }, WS_TIMEOUT_MS);
 
     ws.addEventListener("open", () => {
-      ws.send(JSON.stringify({ type: "subscribe", channel: `order_book/${marketId}` }));
+      ws.send(
+        JSON.stringify({
+          type: "subscribe",
+          channel: `order_book/${marketId}`,
+        }),
+      );
     });
 
     ws.addEventListener("message", (event) => {
       let msg: LighterWsMessage;
       try {
-        msg = JSON.parse(typeof event.data === "string" ? event.data : "{}") as LighterWsMessage;
+        msg = JSON.parse(
+          typeof event.data === "string" ? event.data : "{}",
+        ) as LighterWsMessage;
       } catch {
         return;
       }

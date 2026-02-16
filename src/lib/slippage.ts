@@ -18,7 +18,7 @@ export function computeSlippage(
   levels: BookLevel[],
   targetNotional: number,
   midPrice: number,
-  side: BookSide
+  side: BookSide,
 ): SlippageResult {
   let remainingNotional = targetNotional;
   let totalQty = 0;
@@ -91,8 +91,12 @@ export function analyzeBook({
     midPrice: round(midPrice, 6),
     spread: round(spread, 6),
     spreadBps: round(spreadBps, 2),
-    bids: NOTIONAL_TIERS.map((tier) => computeSlippage(book.bids, tier, midPrice, "bid")),
-    asks: NOTIONAL_TIERS.map((tier) => computeSlippage(book.asks, tier, midPrice, "ask")),
+    bids: NOTIONAL_TIERS.map((tier) =>
+      computeSlippage(book.bids, tier, midPrice, "bid"),
+    ),
+    asks: NOTIONAL_TIERS.map((tier) =>
+      computeSlippage(book.asks, tier, midPrice, "ask"),
+    ),
     meta,
   };
 }

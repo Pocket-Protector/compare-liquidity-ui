@@ -28,10 +28,17 @@ function formatXTick(isoString: string, timeframe: SpreadTimeframe): string {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function formatTooltipTime(isoString: string, timeframe: SpreadTimeframe): string {
+function formatTooltipTime(
+  isoString: string,
+  timeframe: SpreadTimeframe,
+): string {
   const d = new Date(isoString);
   if (timeframe === "1h" || timeframe === "4h") {
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    return d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
   }
   return d.toLocaleString([], {
     month: "short",
@@ -75,7 +82,14 @@ function MidPriceTooltip({
         minWidth: 160,
       }}
     >
-      <p style={{ color: "#e8eefb", fontSize: 11, marginBottom: 6, fontWeight: 600 }}>
+      <p
+        style={{
+          color: "#e8eefb",
+          fontSize: 11,
+          marginBottom: 6,
+          fontWeight: 600,
+        }}
+      >
         {formatTooltipTime(label, timeframe)}
       </p>
       {payload.map((entry: any) => (
@@ -92,13 +106,23 @@ function MidPriceTooltip({
   );
 }
 
-export function MidPriceHistoryChart({ ticker, activeExchanges, timeframe }: MidPriceHistoryChartProps) {
-  const { data, isLoading, error } = useMidPriceHistory(ticker, timeframe, activeExchanges);
+export function MidPriceHistoryChart({
+  ticker,
+  activeExchanges,
+  timeframe,
+}: MidPriceHistoryChartProps) {
+  const { data, isLoading, error } = useMidPriceHistory(
+    ticker,
+    timeframe,
+    activeExchanges,
+  );
 
   return (
     <div>
       {isLoading && (
-        <p className="mb-2 text-xs text-[var(--text-muted)] animate-pulse">Loading…</p>
+        <p className="mb-2 text-xs text-[var(--text-muted)] animate-pulse">
+          Loading…
+        </p>
       )}
       {error ? (
         <div className="flex h-[280px] items-center justify-center rounded-xl border border-dashed border-[color:var(--border)] text-sm text-[var(--text-muted)]">
@@ -111,8 +135,14 @@ export function MidPriceHistoryChart({ ticker, activeExchanges, timeframe }: Mid
       ) : (
         <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ left: 4, right: 14, top: 6, bottom: 6 }}>
-              <CartesianGrid strokeDasharray="4 4" stroke="rgba(186, 213, 255, 0.12)" />
+            <LineChart
+              data={data}
+              margin={{ left: 4, right: 14, top: 6, bottom: 6 }}
+            >
+              <CartesianGrid
+                strokeDasharray="4 4"
+                stroke="rgba(186, 213, 255, 0.12)"
+              />
               <XAxis
                 dataKey="time"
                 tick={{ fill: "#9fb0d1", fontSize: 11 }}
