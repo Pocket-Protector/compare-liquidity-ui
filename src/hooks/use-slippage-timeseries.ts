@@ -126,6 +126,9 @@ export function useSlippageTimeSeries(
   exchangesRef.current = activeExchanges;
   const exchangesKey = activeExchanges.slice().sort().join(",");
 
+  // Monotonic counter to discard stale responses when inputs change rapidly.
+  const requestIdRef = useRef(0);
+
   const fetchData = useCallback(async () => {
     if (!isSupabaseConfigured()) {
       setError("Supabase is not configured.");
@@ -133,6 +136,8 @@ export function useSlippageTimeSeries(
     }
     const exchanges = exchangesRef.current;
     if (exchanges.length === 0) return;
+
+    const requestId = ++requestIdRef.current;
 
     setIsLoading(true);
     setError(null);
@@ -151,19 +156,24 @@ export function useSlippageTimeSeries(
         })),
       );
 
+      if (requestId !== requestIdRef.current) return;
+
       if (timeframe === "1h" || timeframe === "4h") {
         setData(buildMinutePoints(allRows, tier));
       } else {
         setData(buildHourlyPoints(allRows, tier));
       }
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
       setError(
         err instanceof Error
           ? err.message
           : "Failed to fetch slippage time series",
       );
     } finally {
-      setIsLoading(false);
+      if (requestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker, timeframe, exchangesKey, tier]);
