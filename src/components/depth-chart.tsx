@@ -23,6 +23,7 @@ import type {
 interface DepthChartProps {
   statuses: ExchangeRecord<ExchangeStatus>;
   ticker: TickerKey;
+  activeExchanges: ExchangeKey[];
 }
 
 interface AxisDebugSnapshot {
@@ -109,18 +110,16 @@ interface ExchangeDepthSeries {
   ask: DepthPoint[];
 }
 
-export function DepthChart({ statuses, ticker }: DepthChartProps) {
+export function DepthChart({
+  statuses,
+  ticker,
+  activeExchanges,
+}: DepthChartProps) {
   const [fallbackBooks, setFallbackBooks] = useState<
     Partial<Record<ExchangeKey, NormalizedBook>>
   >({});
-  const [activeExchanges, setActiveExchanges] =
-    useState<ExchangeKey[]>(EXCHANGES);
   const [depthTargetNotional, setDepthTargetNotional] =
     useState<DepthTargetNotional>(1_000_000);
-  const [isPaused, setIsPaused] = useState(false);
-  const [pausedDepth, setPausedDepth] = useState<ExchangeDepthSeries[] | null>(
-    null,
-  );
   const [debugMode, setDebugMode] = useState(false);
   const [debugSnapshot, setDebugSnapshot] = useState<AxisDebugSnapshot | null>(
     null,
@@ -230,20 +229,12 @@ export function DepthChart({ statuses, ticker }: DepthChartProps) {
     });
   }, [depthTargetNotional, fallbackBooks, statusDepth]);
 
-  useEffect(() => {
-    setIsPaused(false);
-    setPausedDepth(null);
-  }, [depthTargetNotional, ticker]);
-
-  const effectiveDepthByExchange =
-    isPaused && pausedDepth ? pausedDepth : depthByExchange;
-
   const visibleDepth = useMemo(
     () =>
-      effectiveDepthByExchange.filter((entry) =>
+      depthByExchange.filter((entry) =>
         activeExchanges.includes(entry.exchange),
       ),
-    [activeExchanges, effectiveDepthByExchange],
+    [activeExchanges, depthByExchange],
   );
 
   const maxAbsBps = useMemo(() => {
@@ -454,7 +445,7 @@ export function DepthChart({ statuses, ticker }: DepthChartProps) {
             )
             .join("<br/>");
 
-          return `<span style="color:#9fb0d1">From mid: ${bps}</span><br/><span style="color:#9fb0d1">Per-side cap ${formatUsdCompact(depthTargetNotional)} | ${isPaused ? "Paused snapshot" : "Live updates"}</span><br/>${lines}`;
+          return `<span style="color:#9fb0d1">From mid: ${bps}</span><br/><span style="color:#9fb0d1">Per-side cap ${formatUsdCompact(depthTargetNotional)} | Live updates</span><br/>${lines}`;
         },
       },
       plotOptions: {
@@ -469,13 +460,7 @@ export function DepthChart({ statuses, ticker }: DepthChartProps) {
       },
       series,
     };
-  }, [
-    axisLimit,
-    containerSize.height,
-    depthTargetNotional,
-    isPaused,
-    visibleDepth,
-  ]);
+  }, [axisLimit, containerSize.height, depthTargetNotional, visibleDepth]);
 
   const manualRulerTicks = useMemo(() => {
     const fractions = [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1];
@@ -490,95 +475,11 @@ export function DepthChart({ statuses, ticker }: DepthChartProps) {
     );
   }
 
-  const toggleExchange = (exchange: ExchangeKey) => {
-    setActiveExchanges((current) => {
-      if (current.includes(exchange)) {
-        if (current.length === 1) return current;
-        return current.filter((key) => key !== exchange);
-      }
-      return [...current, exchange];
-    });
-  };
-
-  const selectAll = () => {
-    setActiveExchanges(EXCHANGES);
-  };
-
-  const togglePause = () => {
-    if (isPaused) {
-      setIsPaused(false);
-      setPausedDepth(null);
-      return;
-    }
-    if (depthByExchange.length === 0) return;
-    setPausedDepth(depthByExchange);
-    setIsPaused(true);
-  };
-
   return (
     <div className="space-y-2">
       <div className="text-xs text-[var(--text-muted)]">
-        Each venue contributes bid/ask cumulative notional curves up to{" "}
-        {formatUsdCompact(depthTargetNotional)} per side. Use Pause to freeze
-        the current snapshot and compare shapes.
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {EXCHANGES.map((exchange) => {
-          const isActive = activeExchanges.includes(exchange);
-          const hasData = depthByExchange.some(
-            (entry) => entry.exchange === exchange,
-          );
-          const color = EXCHANGE_COLORS[exchange];
-          return (
-            <button
-              key={exchange}
-              type="button"
-              onClick={() => toggleExchange(exchange)}
-              disabled={!hasData}
-              className={`rounded-full border px-3 py-1 text-xs transition ${
-                isActive
-                  ? "text-[var(--text-primary)]"
-                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              } ${hasData ? "" : "cursor-not-allowed opacity-45"}`}
-              style={{
-                borderColor: isActive ? color : "var(--border)",
-                backgroundColor: isActive ? `${color}24` : "transparent",
-              }}
-            >
-              {EXCHANGE_LABELS[exchange]}
-            </button>
-          );
-        })}
-        <button
-          type="button"
-          onClick={selectAll}
-          className="rounded-full border border-[color:var(--border)] px-3 py-1 text-xs text-[var(--text-secondary)] transition hover:border-[color:var(--border-strong)] hover:text-[var(--text-primary)]"
-        >
-          All
-        </button>
-        <button
-          type="button"
-          onClick={togglePause}
-          disabled={depthByExchange.length === 0}
-          className={`rounded-full border px-3 py-1 text-xs transition ${
-            isPaused
-              ? "border-[color:rgba(99,241,194,0.7)] bg-[color:rgba(99,241,194,0.15)] text-[var(--text-primary)]"
-              : "border-[color:var(--border)] text-[var(--text-secondary)] hover:border-[color:var(--border-strong)] hover:text-[var(--text-primary)]"
-          } ${depthByExchange.length === 0 ? "cursor-not-allowed opacity-45" : ""}`}
-        >
-          {isPaused ? "Resume" : "Pause"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setDebugMode((v) => !v)}
-          className={`rounded-full border px-3 py-1 text-xs transition ${
-            debugMode
-              ? "border-[color:rgba(255,111,124,0.7)] bg-[color:rgba(255,111,124,0.16)] text-[var(--text-primary)]"
-              : "border-[color:var(--border)] text-[var(--text-secondary)] hover:border-[color:var(--border-strong)] hover:text-[var(--text-primary)]"
-          }`}
-        >
-          Debug
-        </button>
+        Each exchange contributes bid/ask cumulative notional curves up to{" "}
+        {formatUsdCompact(depthTargetNotional)} per side.
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs text-[var(--text-secondary)]">
@@ -601,6 +502,14 @@ export function DepthChart({ statuses, ticker }: DepthChartProps) {
             </button>
           );
         })}
+        <button
+          type="button"
+          disabled
+          className="cursor-not-allowed rounded-full border border-[color:var(--border)] px-3 py-1 text-xs text-[var(--text-secondary)] opacity-45"
+          title="Debug toggle is disabled"
+        >
+          Debug
+        </button>
       </div>
       <div
         ref={chartWrapperRef}
@@ -615,7 +524,7 @@ export function DepthChart({ statuses, ticker }: DepthChartProps) {
           />
         ) : (
           <div className="flex h-full items-center justify-center text-sm text-[var(--text-muted)]">
-            Select at least one exchange to render depth curves.
+            No active exchange has depth data for {ticker}.
           </div>
         )}
       </div>
@@ -628,8 +537,7 @@ export function DepthChart({ statuses, ticker }: DepthChartProps) {
             Container: {containerSize.width}px x {containerSize.height}px,
             visible exchanges: {visibleDepth.length}, axisLimit: +/-
             {axisLimit.toFixed(2)} bps, cap:{" "}
-            {formatUsdCompact(depthTargetNotional)}, mode:{" "}
-            {isPaused ? "paused" : "live"}
+            {formatUsdCompact(depthTargetNotional)}
           </p>
           {debugSnapshot ? (
             <p>

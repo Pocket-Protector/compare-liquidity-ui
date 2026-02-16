@@ -9,13 +9,12 @@ export function Header() {
       </div>
 
       <div className="relative z-10">
-        <p className="label">Compare Liquidity</p>
+        <p className="label">Compare Liquidity across DEXs & CEXs</p>
         <h1 className="mt-3 max-w-3xl text-4xl font-semibold leading-tight tracking-tight text-[var(--text-primary)] sm:text-5xl">
-          Real-time Perpetual Liquidity Monitor
+          Perps Liquidity Comparison
         </h1>
         <p className="mt-4 max-w-2xl text-sm text-[var(--text-secondary)] sm:text-base">
-          A modern venue comparison dashboard for spreads and slippage depth
-          across centralized and decentralized markets.
+          Comparison dashboard for spreads and depth across DEXs & CEXs
         </p>
       </div>
     </header>

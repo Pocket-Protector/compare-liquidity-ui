@@ -2,13 +2,13 @@
 
 import { Fragment, type CSSProperties } from "react";
 import {
-  EXCHANGES,
   EXCHANGE_COLORS,
   EXCHANGE_LABELS,
   NOTIONAL_TIERS,
 } from "@/lib/constants";
 import { formatTier, formatUsd } from "@/lib/format";
 import type {
+  ExchangeKey,
   ExchangeRecord,
   ExchangeStatus,
   LiquidityAnalysis,
@@ -43,6 +43,7 @@ interface DataTableProps {
   ticker: TickerKey;
   lastRefreshAt: number | null;
   spreadUnit: SpreadUnit;
+  activeExchanges: ExchangeKey[];
   onToggleUnit: () => void;
 }
 
@@ -66,6 +67,7 @@ export function DataTable({
   ticker,
   lastRefreshAt,
   spreadUnit,
+  activeExchanges,
   onToggleUnit,
 }: DataTableProps) {
   return (
@@ -77,7 +79,8 @@ export function DataTable({
             {ticker} Slippage Breakdown
           </h3>
           <p className="text-sm text-[var(--text-secondary)]">
-            Spread and execution depth for six venues, refreshed every 1.5s.
+            Spread and execution depth for selected exchanges, refreshed every
+            1.5s.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -127,7 +130,7 @@ export function DataTable({
           </thead>
 
           <tbody>
-            {EXCHANGES.map((exchange) => {
+            {activeExchanges.map((exchange) => {
               const analysis = statuses[exchange].analysis;
               const rowHoverStyle = {
                 "--exchange-row-hover": `${EXCHANGE_COLORS[exchange]}3d`,
