@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { Dashboard } from "@/components/dashboard";
+import { FeeConfigPanel } from "@/components/fee-config";
 import { Header } from "@/components/header";
 import { ModeSelector, type ConsoleMode } from "@/components/mode-selector";
 import { SpreadCards } from "@/components/spread-cards";
 import { TickerSelector } from "@/components/ticker-selector";
 import { TimeframeSelector } from "@/components/timeframe-selector";
 import { useLiquidityPoll } from "@/hooks/use-liquidity-poll";
+import { DEFAULT_FEES, getEffectiveFees } from "@/lib/fee-defaults";
 import type { SpreadTimeframe } from "@/lib/timeframes";
 import { EXCHANGES } from "@/lib/constants";
-import type { ExchangeKey, TickerKey } from "@/lib/types";
+import type { ExchangeKey, FeeConfig, TickerKey } from "@/lib/types";
 
 const HISTORICAL_TICKERS: TickerKey[] = [
   "BTC",
@@ -29,14 +31,29 @@ export default function HomePage() {
   const [timeframe, setTimeframe] = useState<SpreadTimeframe>("1h");
   const [activeExchanges, setActiveExchanges] =
     useState<ExchangeKey[]>(EXCHANGES);
-  const { statuses, lastRefreshAt, hasData, isLoading } =
-    useLiquidityPoll(ticker);
+  const [feeConfig, setFeeConfig] = useState<FeeConfig>({
+    enabled: false,
+    activeRole: "taker",
+    fees: { ...DEFAULT_FEES },
+    overrides: { ...DEFAULT_FEES },
+  });
+  const { statuses, lastRefreshAt, hasData, isLoading } = useLiquidityPoll(
+    ticker,
+    activeExchanges,
+  );
 
   useEffect(() => {
     if (consoleMode !== "historical") return;
     if (HISTORICAL_TICKER_SET.has(ticker)) return;
     setTicker(HISTORICAL_TICKERS[0]);
   }, [consoleMode, ticker]);
+
+  useEffect(() => {
+    setFeeConfig((prev) => ({
+      ...prev,
+      fees: getEffectiveFees(prev.overrides, ticker),
+    }));
+  }, [ticker]);
 
   const toggleExchange = (exchange: ExchangeKey) => {
     setActiveExchanges((current) => {
@@ -82,6 +99,12 @@ export default function HomePage() {
             />
           </div>
 
+          <FeeConfigPanel
+            ticker={ticker}
+            feeConfig={feeConfig}
+            onFeeConfigChange={setFeeConfig}
+          />
+
           <SpreadCards
             statuses={statuses}
             activeExchanges={activeExchanges}
@@ -104,6 +127,7 @@ export default function HomePage() {
             activeExchanges={activeExchanges}
             consoleMode={consoleMode}
             timeframe={timeframe}
+            feeConfig={feeConfig}
           />
         )}
       </div>

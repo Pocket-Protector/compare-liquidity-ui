@@ -7,6 +7,7 @@ import type {
   ExchangeKey,
   ExchangeRecord,
   ExchangeStatus,
+  FeeConfig,
   SpreadUnit,
   TickerKey,
 } from "@/lib/types";
@@ -22,6 +23,7 @@ interface SlippagePanelProps {
   activeExchanges: ExchangeKey[];
   consoleMode: ConsoleMode;
   timeframe: SpreadTimeframe;
+  feeConfig: FeeConfig;
 }
 
 export function SlippagePanel({
@@ -31,6 +33,7 @@ export function SlippagePanel({
   activeExchanges,
   consoleMode,
   timeframe,
+  feeConfig,
 }: SlippagePanelProps) {
   const isHistorical = consoleMode === "historical";
   const tfLabel = TIMEFRAME_LABELS[timeframe];
@@ -91,6 +94,7 @@ export function SlippagePanel({
           statuses={statuses}
           spreadUnit={spreadUnit}
           activeExchanges={activeExchanges}
+          feeConfig={feeConfig}
           historicalData={isHistorical ? askData : undefined}
         />
       </article>
@@ -113,6 +117,7 @@ export function SlippagePanel({
           statuses={statuses}
           spreadUnit={spreadUnit}
           activeExchanges={activeExchanges}
+          feeConfig={feeConfig}
           historicalData={isHistorical ? bidData : undefined}
         />
       </article>
