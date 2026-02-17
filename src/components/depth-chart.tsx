@@ -11,11 +11,13 @@ import {
 } from "@/lib/constants";
 import { EXCHANGE_REGISTRY } from "@/lib/exchanges";
 import { fetchOrderbookRaw } from "@/lib/orderbook-client";
+import { getFeeBps } from "@/lib/fee-defaults";
 import type {
   BookLevel,
   ExchangeKey,
   ExchangeRecord,
   ExchangeStatus,
+  FeeConfig,
   NormalizedBook,
   TickerKey,
 } from "@/lib/types";
@@ -24,6 +26,7 @@ interface DepthChartProps {
   statuses: ExchangeRecord<ExchangeStatus>;
   ticker: TickerKey;
   activeExchanges: ExchangeKey[];
+  feeConfig: FeeConfig;
 }
 
 interface AxisDebugSnapshot {
@@ -114,6 +117,7 @@ export function DepthChart({
   statuses,
   ticker,
   activeExchanges,
+  feeConfig,
 }: DepthChartProps) {
   const [fallbackBooks, setFallbackBooks] = useState<
     Partial<Record<ExchangeKey, NormalizedBook>>
@@ -237,15 +241,32 @@ export function DepthChart({
     [activeExchanges, depthByExchange],
   );
 
+  const shiftedVisibleDepth = useMemo<ExchangeDepthSeries[]>(() => {
+    return visibleDepth.map(({ exchange, bid, ask }) => {
+      const feeBps = getFeeBps(feeConfig, exchange);
+      return {
+        exchange,
+        bid: bid.map(
+          ([x, y]): DepthPoint =>
+            y === 0 ? [0, 0] : [Number((x - feeBps).toFixed(4)), y],
+        ),
+        ask: ask.map(
+          ([x, y]): DepthPoint =>
+            y === 0 ? [0, 0] : [Number((x + feeBps).toFixed(4)), y],
+        ),
+      };
+    });
+  }, [feeConfig, visibleDepth]);
+
   const maxAbsBps = useMemo(() => {
-    return visibleDepth.reduce((acc, entry) => {
+    return shiftedVisibleDepth.reduce((acc, entry) => {
       const localMax = [...entry.bid, ...entry.ask].reduce(
         (m, point) => Math.max(m, Math.abs(point[0])),
         0,
       );
       return Math.max(acc, localMax);
     }, 0);
-  }, [visibleDepth]);
+  }, [shiftedVisibleDepth]);
 
   const axisLimit = useMemo(
     () => Math.max(5, Number((maxAbsBps * 1.12).toFixed(2))),
@@ -310,7 +331,7 @@ export function DepthChart({
   const options = useMemo<Highcharts.Options>(() => {
     const chartHeight = Math.max(320, Math.floor(containerSize.height || 460));
 
-    const series: Highcharts.SeriesOptionsType[] = visibleDepth.flatMap(
+    const series: Highcharts.SeriesOptionsType[] = shiftedVisibleDepth.flatMap(
       ({ exchange, bid, ask }) => {
         const color = EXCHANGE_COLORS[exchange];
         const label = EXCHANGE_LABELS[exchange];
@@ -460,7 +481,12 @@ export function DepthChart({
       },
       series,
     };
-  }, [axisLimit, containerSize.height, depthTargetNotional, visibleDepth]);
+  }, [
+    axisLimit,
+    containerSize.height,
+    depthTargetNotional,
+    shiftedVisibleDepth,
+  ]);
 
   const manualRulerTicks = useMemo(() => {
     const fractions = [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1];

@@ -11,7 +11,8 @@ import {
   YAxis,
 } from "recharts";
 import { EXCHANGE_COLORS, EXCHANGE_LABELS } from "@/lib/constants";
-import type { ExchangeKey, TickerKey } from "@/lib/types";
+import { getFeeBps } from "@/lib/fee-defaults";
+import type { ExchangeKey, FeeConfig, TickerKey } from "@/lib/types";
 import type { SpreadTimeframe } from "@/lib/timeframes";
 import {
   useSlippageTimeSeries,
@@ -22,6 +23,7 @@ interface SlippageHistoryChartProps {
   ticker: TickerKey;
   activeExchanges: ExchangeKey[];
   timeframe: SpreadTimeframe;
+  feeConfig: FeeConfig;
 }
 
 const TIER_OPTIONS: { value: SlippageTier; label: string }[] = [
@@ -130,14 +132,29 @@ export function SlippageHistoryChart({
   ticker,
   activeExchanges,
   timeframe,
+  feeConfig,
 }: SlippageHistoryChartProps) {
   const [tier, setTier] = useState<SlippageTier>("10k");
-  const { data, isLoading, error } = useSlippageTimeSeries(
-    ticker,
-    timeframe,
-    activeExchanges,
-    tier,
-  );
+  const {
+    data: rawData,
+    isLoading,
+    error,
+  } = useSlippageTimeSeries(ticker, timeframe, activeExchanges, tier);
+
+  // Apply fee adjustment to each data point
+  const data = rawData.map((point) => {
+    const adjusted: Record<string, unknown> = { time: point.time };
+    for (const exchange of activeExchanges) {
+      const feeBps = getFeeBps(feeConfig, exchange);
+      const askVal = point[`${exchange}_ask`];
+      const bidVal = point[`${exchange}_bid`];
+      adjusted[`${exchange}_ask`] =
+        typeof askVal === "number" ? askVal + feeBps : askVal;
+      adjusted[`${exchange}_bid`] =
+        typeof bidVal === "number" ? bidVal + feeBps : bidVal;
+    }
+    return adjusted;
+  });
 
   return (
     <div>

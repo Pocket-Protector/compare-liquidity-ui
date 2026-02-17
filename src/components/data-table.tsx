@@ -6,11 +6,13 @@ import {
   EXCHANGE_LABELS,
   NOTIONAL_TIERS,
 } from "@/lib/constants";
+import { getFeeBps } from "@/lib/fee-defaults";
 import { formatTier, formatUsd } from "@/lib/format";
 import type {
   ExchangeKey,
   ExchangeRecord,
   ExchangeStatus,
+  FeeConfig,
   LiquidityAnalysis,
   SlippageResult,
   SpreadUnit,
@@ -44,19 +46,22 @@ interface DataTableProps {
   lastRefreshAt: number | null;
   spreadUnit: SpreadUnit;
   activeExchanges: ExchangeKey[];
+  feeConfig: FeeConfig;
   onToggleUnit: () => void;
 }
 
 function renderCell(
   point: SlippageResult | undefined,
   unit: SpreadUnit,
+  feeBps: number,
 ): string {
   if (!point) return "--";
 
+  const adjusted = point.slippageBps + feeBps;
   const value =
     unit === "pct"
-      ? `${(point.slippageBps / 100).toFixed(4)}%`
-      : `${point.slippageBps.toFixed(2)} bps`;
+      ? `${(adjusted / 100).toFixed(4)}%`
+      : `${adjusted.toFixed(2)} bps`;
 
   if (point.filled) return value;
   return `${value} (partial ${formatUsd(point.filledNotional, true)})`;
@@ -68,6 +73,7 @@ export function DataTable({
   lastRefreshAt,
   spreadUnit,
   activeExchanges,
+  feeConfig,
   onToggleUnit,
 }: DataTableProps) {
   return (
@@ -171,18 +177,19 @@ export function DataTable({
                   {NOTIONAL_TIERS.map((tier, idx) => {
                     const bidPoint = analysis?.bids[idx];
                     const askPoint = analysis?.asks[idx];
+                    const feeBps = getFeeBps(feeConfig, exchange);
 
                     return (
                       <Fragment key={`${exchange}-${tier}`}>
                         <td
                           className={`data-mono px-3 py-3 text-center transition-colors group-hover:bg-[color:var(--exchange-row-hover)] ${bidPoint && !bidPoint.filled ? "text-[var(--warning)]" : "text-[var(--text-secondary)]"}`}
                         >
-                          {renderCell(bidPoint, spreadUnit)}
+                          {renderCell(bidPoint, spreadUnit, feeBps)}
                         </td>
                         <td
                           className={`data-mono px-3 py-3 text-center transition-colors group-hover:bg-[color:var(--exchange-row-hover)] ${askPoint && !askPoint.filled ? "text-[var(--warning)]" : "text-[var(--text-secondary)]"}`}
                         >
-                          {renderCell(askPoint, spreadUnit)}
+                          {renderCell(askPoint, spreadUnit, feeBps)}
                         </td>
                       </Fragment>
                     );

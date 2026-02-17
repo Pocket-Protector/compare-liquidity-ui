@@ -60,3 +60,17 @@ export interface ExchangeStatus {
 export type ExchangeRecord<T> = Record<ExchangeKey, T>;
 
 export type SpreadUnit = "bps" | "pct";
+
+export type FeeRole = "maker" | "taker";
+
+export interface ExchangeFees {
+  maker: number;
+  taker: number;
+}
+
+export interface FeeConfig {
+  enabled: boolean;
+  activeRole: FeeRole;
+  fees: ExchangeRecord<ExchangeFees>;
+  overrides: ExchangeRecord<ExchangeFees>;
+}
