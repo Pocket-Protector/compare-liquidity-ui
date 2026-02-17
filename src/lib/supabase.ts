@@ -1,7 +1,5 @@
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const SUPABASE_ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 const PAGE_SIZE = 1000;
 
@@ -33,7 +31,7 @@ async function fetchAllPages<T>(url: string): Promise<T[]> {
   const all: T[] = [];
   let offset = 0;
 
-  // eslint-disable-next-line no-constant-condition
+   
   while (true) {
     const rangeEnd = offset + PAGE_SIZE - 1;
     const res = await fetch(url, {

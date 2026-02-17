@@ -10,11 +10,17 @@ interface SpreadCardsProps {
   onToggleExchange: (exchange: ExchangeKey) => void;
 }
 
-export function SpreadCards({ statuses, activeExchanges, onToggleExchange }: SpreadCardsProps) {
+export function SpreadCards({
+  statuses,
+  activeExchanges,
+  onToggleExchange,
+}: SpreadCardsProps) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-sm text-[var(--text-secondary)]">Enable or disable each exchange</p>
+        <p className="text-sm text-[var(--text-secondary)]">
+          Enable or disable each exchange
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -39,8 +45,13 @@ export function SpreadCards({ statuses, activeExchanges, onToggleExchange }: Spr
                 backgroundColor: isActive ? `${color}1f` : "transparent",
               }}
             >
-              <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
-              <span className="text-sm font-medium">{EXCHANGE_LABELS[exchange]}</span>
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: color }}
+              />
+              <span className="text-sm font-medium">
+                {EXCHANGE_LABELS[exchange]}
+              </span>
               <PulseDot timestamp={status.lastUpdated} />
             </button>
           );

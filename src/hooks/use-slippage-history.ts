@@ -65,6 +65,9 @@ export function useSlippageHistory(
   exchangesRef.current = activeExchanges;
   const exchangesKey = activeExchanges.slice().sort().join(",");
 
+  // Monotonic counter to discard stale responses when inputs change rapidly.
+  const requestIdRef = useRef(0);
+
   const fetchData = useCallback(async () => {
     if (!isSupabaseConfigured()) {
       setError("Supabase is not configured.");
@@ -74,6 +77,8 @@ export function useSlippageHistory(
     const exchanges = exchangesRef.current;
     if (exchanges.length === 0) return;
 
+    const requestId = ++requestIdRef.current;
+
     setIsLoading(true);
     setError(null);
 
@@ -82,10 +87,16 @@ export function useSlippageHistory(
 
       const perExchange = await Promise.all(
         exchanges.map(async (exchange) => {
-          const rows = await fetchSlippageForExchange(ticker, exchange, fromIso);
+          const rows = await fetchSlippageForExchange(
+            ticker,
+            exchange,
+            fromIso,
+          );
           return { exchange, rows };
         }),
       );
+
+      if (requestId !== requestIdRef.current) return;
 
       const askRows: SlippageMedianDatum[] = NOTIONAL_TIERS.map((tier, idx) => {
         const datum: SlippageMedianDatum = { tier: formatTier(tier) };
@@ -110,9 +121,14 @@ export function useSlippageHistory(
       setAskData(askRows);
       setBidData(bidRows);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch slippage data");
+      if (requestId !== requestIdRef.current) return;
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch slippage data",
+      );
     } finally {
-      setIsLoading(false);
+      if (requestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker, timeframe, exchangesKey]);

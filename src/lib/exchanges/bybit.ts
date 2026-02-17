@@ -18,7 +18,13 @@ function parseLevels(levels: [string, string][] | undefined): BookLevel[] {
       px: Number.parseFloat(price),
       sz: Number.parseFloat(qty),
     }))
-    .filter((level) => Number.isFinite(level.px) && Number.isFinite(level.sz) && level.px > 0 && level.sz > 0);
+    .filter(
+      (level) =>
+        Number.isFinite(level.px) &&
+        Number.isFinite(level.sz) &&
+        level.px > 0 &&
+        level.sz > 0,
+    );
 }
 
 export function parseBybitBook(raw: unknown): NormalizedBook {

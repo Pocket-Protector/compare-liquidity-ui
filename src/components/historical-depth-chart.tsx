@@ -3,7 +3,11 @@
 import { useMemo, useState } from "react";
 import Highcharts from "highcharts";
 import HighchartsReact from "highcharts-react-official";
-import { EXCHANGE_COLORS, EXCHANGE_LABELS, NOTIONAL_TIERS } from "@/lib/constants";
+import {
+  EXCHANGE_COLORS,
+  EXCHANGE_LABELS,
+  NOTIONAL_TIERS,
+} from "@/lib/constants";
 import { formatTier } from "@/lib/format";
 import { useSlippageHistory } from "@/hooks/use-slippage-history";
 import type { SpreadTimeframe } from "@/lib/timeframes";
@@ -43,18 +47,29 @@ function toFinite(raw: unknown): number | null {
   return n;
 }
 
-export function HistoricalDepthChart({ ticker, timeframe, activeExchanges }: HistoricalDepthChartProps) {
-  const { askData, bidData, isLoading, error } = useSlippageHistory(ticker, timeframe, activeExchanges);
-  const [depthTargetNotional, setDepthTargetNotional] = useState<DepthTargetNotional>(1_000_000);
+export function HistoricalDepthChart({
+  ticker,
+  timeframe,
+  activeExchanges,
+}: HistoricalDepthChartProps) {
+  const { askData, bidData, isLoading, error } = useSlippageHistory(
+    ticker,
+    timeframe,
+    activeExchanges,
+  );
+  const [depthTargetNotional, setDepthTargetNotional] =
+    useState<DepthTargetNotional>(1_000_000);
 
   const selectedTierIndex = useMemo(() => {
-    const idx = NOTIONAL_TIERS.findIndex((tier) => tier === depthTargetNotional);
+    const idx = NOTIONAL_TIERS.findIndex(
+      (tier) => tier === depthTargetNotional,
+    );
     return idx >= 0 ? idx : NOTIONAL_TIERS.length - 1;
   }, [depthTargetNotional]);
 
   const tiersToUse = useMemo(
     () => NOTIONAL_TIERS.slice(0, selectedTierIndex + 1),
-    [selectedTierIndex]
+    [selectedTierIndex],
   );
 
   const tierToY = useMemo(() => {
@@ -91,12 +106,18 @@ export function HistoricalDepthChart({ ticker, timeframe, activeExchanges }: His
 
   const maxAbsBps = useMemo(() => {
     return curves.reduce((acc, curve) => {
-      const local = [...curve.ask, ...curve.bid].reduce((m, [x]) => Math.max(m, Math.abs(x)), 0);
+      const local = [...curve.ask, ...curve.bid].reduce(
+        (m, [x]) => Math.max(m, Math.abs(x)),
+        0,
+      );
       return Math.max(acc, local);
     }, 0);
   }, [curves]);
 
-  const axisLimit = useMemo(() => Math.max(2, Number((maxAbsBps * 1.2).toFixed(2))), [maxAbsBps]);
+  const axisLimit = useMemo(
+    () => Math.max(2, Number((maxAbsBps * 1.2).toFixed(2))),
+    [maxAbsBps],
+  );
 
   const options = useMemo<Highcharts.Options>(() => {
     const yTickPositions = [0, ...tiersToUse.map((_, idx) => idx + 1)];
@@ -214,11 +235,17 @@ export function HistoricalDepthChart({ ticker, timeframe, activeExchanges }: His
           const ctx = this as any;
           const x = Number(ctx.x);
           const yPos = Number(ctx.y);
-          const seriesName = typeof ctx.series?.name === "string" ? ctx.series.name : "";
+          const seriesName =
+            typeof ctx.series?.name === "string" ? ctx.series.name : "";
           const markerColor = ctx.color ? String(ctx.color) : "#9fb0d1";
           const marker = `<span style="color:${markerColor}">\u25CF</span>`;
           const tier = yToTier.get(Math.round(yPos));
-          const fillNotional = yPos === 0 ? "$0" : tier != null ? formatTier(tier) : formatUsdCompact(yPos);
+          const fillNotional =
+            yPos === 0
+              ? "$0"
+              : tier != null
+                ? formatTier(tier)
+                : formatUsdCompact(yPos);
 
           return `${marker} ${seriesName}<br/><span style="color:#9fb0d1">From mid: ${formatBps(x)}</span><br/><span style="color:#9fb0d1">Fill notional: ${fillNotional}</span>`;
         },
@@ -254,10 +281,15 @@ export function HistoricalDepthChart({ ticker, timeframe, activeExchanges }: His
   return (
     <div className="space-y-2">
       <div className="text-xs text-[var(--text-muted)]">
-        Historical depth proxy from median slippage tiers, using equal vertical spacing between tier levels. Curves step through each tier level ($1K, $10K, $100K, $1M). Solid lines are ask-side and dashed lines are bid-side.
+        Historical depth proxy from median slippage tiers, using equal vertical
+        spacing between tier levels. Curves step through each tier level ($1K,
+        $10K, $100K, $1M). Solid lines are ask-side and dashed lines are
+        bid-side.
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs text-[var(--text-secondary)]">Per-side depth cap:</span>
+        <span className="text-xs text-[var(--text-secondary)]">
+          Per-side depth cap:
+        </span>
         {NOTIONAL_TIERS.map((tier) => {
           const isActive = depthTargetNotional === tier;
           return (
@@ -277,10 +309,16 @@ export function HistoricalDepthChart({ ticker, timeframe, activeExchanges }: His
         })}
       </div>
       {isLoading ? (
-        <p className="text-xs text-[var(--text-muted)] animate-pulse">Loading historical depth data...</p>
+        <p className="text-xs text-[var(--text-muted)] animate-pulse">
+          Loading historical depth data...
+        </p>
       ) : null}
       <div className="h-[460px] w-full rounded-xl border border-[color:var(--border)]">
-        <HighchartsReact highcharts={Highcharts} options={options} containerProps={{ style: { height: "100%" } }} />
+        <HighchartsReact
+          highcharts={Highcharts}
+          options={options}
+          containerProps={{ style: { height: "100%" } }}
+        />
       </div>
     </div>
   );

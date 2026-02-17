@@ -1,10 +1,21 @@
 import type { ExchangeKey, ExchangeRecord, TickerKey } from "./types";
-import { buildTickerMap, listPairMappings, listTrackedTickers } from "./pair-mapping";
+import {
+  buildTickerMap,
+  listPairMappings,
+  listTrackedTickers,
+} from "./pair-mapping";
 
 export const NOTIONAL_TIERS = [1_000, 10_000, 100_000, 1_000_000] as const;
 export const POLL_INTERVAL_MS = 1_500;
 
-export const EXCHANGES: ExchangeKey[] = ["hyperliquid", "dydx", "lighter", "asterdex", "binance", "bybit"];
+export const EXCHANGES: ExchangeKey[] = [
+  "hyperliquid",
+  "dydx",
+  "lighter",
+  "asterdex",
+  "binance",
+  "bybit",
+];
 export const TICKERS: TickerKey[] = listTrackedTickers();
 
 export const EXCHANGE_LABELS: ExchangeRecord<string> = {
@@ -25,7 +36,10 @@ export const EXCHANGE_COLORS: ExchangeRecord<string> = {
   bybit: "#FF9C2E",
 };
 
-export const TICKER_MAP: Record<TickerKey, ExchangeRecord<string>> = buildTickerMap(TICKERS);
+export const TICKER_MAP: Record<
+  TickerKey,
+  ExchangeRecord<string>
+> = buildTickerMap(TICKERS);
 export const TRACKED_TICKERS = listPairMappings(TICKERS);
 export const TICKER_PAIR_ROWS = TRACKED_TICKERS;
 

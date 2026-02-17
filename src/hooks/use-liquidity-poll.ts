@@ -7,23 +7,28 @@ import { fetchLighterBookWs } from "@/lib/lighter-ws";
 import { fetchOrderbookRaw } from "@/lib/orderbook-client";
 import { isTickerSupportedOnExchange } from "@/lib/pair-mapping";
 import { analyzeBook } from "@/lib/slippage";
-import type { ExchangeKey, ExchangeRecord, ExchangeStatus, LiquidityAnalysis, NormalizedBook, SlippageResult, TickerKey } from "@/lib/types";
+import type {
+  ExchangeKey,
+  ExchangeRecord,
+  ExchangeStatus,
+  LiquidityAnalysis,
+  NormalizedBook,
+  SlippageResult,
+  TickerKey,
+} from "@/lib/types";
 
 function createInitialStatuses(): ExchangeRecord<ExchangeStatus> {
-  return EXCHANGES.reduce(
-    (acc, exchange) => {
-      acc[exchange] = {
-        exchange,
-        loading: true,
-        error: null,
-        lastUpdated: null,
-        analysis: null,
-        book: null,
-      };
-      return acc;
-    },
-    {} as ExchangeRecord<ExchangeStatus>
-  );
+  return EXCHANGES.reduce((acc, exchange) => {
+    acc[exchange] = {
+      exchange,
+      loading: true,
+      error: null,
+      lastUpdated: null,
+      analysis: null,
+      book: null,
+    };
+    return acc;
+  }, {} as ExchangeRecord<ExchangeStatus>);
 }
 
 type PollOutcome = {
@@ -163,7 +168,9 @@ export function useLiquidityPoll(ticker: TickerKey): {
   hasData: boolean;
   isLoading: boolean;
 } {
-  const [statuses, setStatuses] = useState<ExchangeRecord<ExchangeStatus>>(() => createInitialStatuses());
+  const [statuses, setStatuses] = useState<ExchangeRecord<ExchangeStatus>>(() =>
+    createInitialStatuses(),
+  );
   const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null);
   const inFlightRef = useRef(false);
 
@@ -178,7 +185,9 @@ export function useLiquidityPoll(ticker: TickerKey): {
     const poll = async () => {
       if (inFlightRef.current) return;
       inFlightRef.current = true;
-      const supportedExchanges = EXCHANGES.filter((exchange) => isTickerSupportedOnExchange(ticker, exchange));
+      const supportedExchanges = EXCHANGES.filter((exchange) =>
+        isTickerSupportedOnExchange(ticker, exchange),
+      );
 
       setStatuses((prev) => {
         const next = { ...prev };
@@ -210,7 +219,7 @@ export function useLiquidityPoll(ticker: TickerKey): {
           const book = EXCHANGE_REGISTRY[exchange].parse(raw);
           const analysis = analyzeBook({ ticker, exchange, book });
           return { exchange, analysis, book };
-        })
+        }),
       );
 
       if (!active) {
@@ -265,17 +274,18 @@ export function useLiquidityPoll(ticker: TickerKey): {
 
   const hasData = useMemo(
     () => EXCHANGES.some((exchange) => Boolean(statuses[exchange].analysis)),
-    [statuses]
+    [statuses],
   );
 
-  const isLoading = useMemo(
-    () => {
-      const supported = EXCHANGES.filter((exchange) => isTickerSupportedOnExchange(ticker, exchange));
-      if (supported.length === 0) return false;
-      return supported.every((exchange) => statuses[exchange].loading && !statuses[exchange].analysis);
-    },
-    [statuses, ticker]
-  );
+  const isLoading = useMemo(() => {
+    const supported = EXCHANGES.filter((exchange) =>
+      isTickerSupportedOnExchange(ticker, exchange),
+    );
+    if (supported.length === 0) return false;
+    return supported.every(
+      (exchange) => statuses[exchange].loading && !statuses[exchange].analysis,
+    );
+  }, [statuses, ticker]);
 
   return {
     statuses,

@@ -16,7 +16,9 @@ type ExchangeSymbolConfig = {
   defaultQuote?: QuoteCurrency;
 };
 
-type AssetVariantAliasMap = Partial<Record<ExchangeKey, Record<string, AssetVariant>>>;
+type AssetVariantAliasMap = Partial<
+  Record<ExchangeKey, Record<string, AssetVariant>>
+>;
 
 export interface AssetVariant {
   baseAsset: string;
@@ -35,7 +37,10 @@ export interface ParsedVenueSymbol {
 
 // Single source of truth for tracked tickers and optional per-exchange symbol overrides.
 // Verified across Hyperliquid, dYdX, Lighter, AsterDEX, Binance, and Bybit on 2026-02-11
-export const TRACKED_TICKER_DEFINITIONS: Record<TickerKey, TrackedTickerDefinition> = {
+export const TRACKED_TICKER_DEFINITIONS: Record<
+  TickerKey,
+  TrackedTickerDefinition
+> = {
   "2Z": {
     base: "2Z",
     canonicalQuote: "USD",
@@ -355,10 +360,16 @@ const GLOBAL_ASSET_VARIANT_ALIASES: Record<string, AssetVariant> = {
 const EXCHANGE_ASSET_VARIANT_ALIASES: AssetVariantAliasMap = {};
 
 function normalizeSymbolToken(raw: string): string {
-  return raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return raw
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
 }
 
-function splitQuoteSuffix(symbol: string): { baseToken: string; quoteAsset: QuoteCurrency | null } {
+function splitQuoteSuffix(symbol: string): {
+  baseToken: string;
+  quoteAsset: QuoteCurrency | null;
+} {
   for (const quote of QUOTE_SUFFIXES) {
     if (symbol.endsWith(quote) && symbol.length > quote.length) {
       return {
@@ -371,9 +382,13 @@ function splitQuoteSuffix(symbol: string): { baseToken: string; quoteAsset: Quot
   return { baseToken: symbol, quoteAsset: null };
 }
 
-function resolveAssetVariant(exchange: ExchangeKey, baseToken: string): AssetVariant {
+function resolveAssetVariant(
+  exchange: ExchangeKey,
+  baseToken: string,
+): AssetVariant {
   const normalizedBaseToken = normalizeSymbolToken(baseToken);
-  const exchangeAlias = EXCHANGE_ASSET_VARIANT_ALIASES[exchange]?.[normalizedBaseToken];
+  const exchangeAlias =
+    EXCHANGE_ASSET_VARIANT_ALIASES[exchange]?.[normalizedBaseToken];
   if (exchangeAlias) return exchangeAlias;
 
   const globalAlias = GLOBAL_ASSET_VARIANT_ALIASES[normalizedBaseToken];
@@ -385,7 +400,10 @@ function resolveAssetVariant(exchange: ExchangeKey, baseToken: string): AssetVar
   };
 }
 
-export function parseVenueSymbol(exchange: ExchangeKey, symbol: string): ParsedVenueSymbol {
+export function parseVenueSymbol(
+  exchange: ExchangeKey,
+  symbol: string,
+): ParsedVenueSymbol {
   const normalizedSymbol = normalizeSymbolToken(symbol);
   const split = splitQuoteSuffix(normalizedSymbol);
   const variant = resolveAssetVariant(exchange, split.baseToken);
@@ -406,12 +424,17 @@ export function buildCanonicalMarketId(parsed: ParsedVenueSymbol): string {
   return `${parsed.canonicalBaseAsset}-${quote}-x${parsed.contractMultiplier}`;
 }
 
-function formatSymbol(base: string, quote: QuoteCurrency | undefined, style: SymbolStyle): string {
+function formatSymbol(
+  base: string,
+  quote: QuoteCurrency | undefined,
+  style: SymbolStyle,
+): string {
   switch (style) {
     case "baseOnly":
       return base;
     case "baseDashQuote":
-      if (!quote) throw new Error("quote currency is required for baseDashQuote");
+      if (!quote)
+        throw new Error("quote currency is required for baseDashQuote");
       return `${base}-${quote}`;
     case "baseQuote":
       if (!quote) throw new Error("quote currency is required for baseQuote");
@@ -421,17 +444,26 @@ function formatSymbol(base: string, quote: QuoteCurrency | undefined, style: Sym
   }
 }
 
-export function resolveExchangeSymbol(exchange: ExchangeKey, ticker: TickerKey): string {
+export function resolveExchangeSymbol(
+  exchange: ExchangeKey,
+  ticker: TickerKey,
+): string {
   const pair = TRACKED_TICKER_DEFINITIONS[ticker];
   const manualSymbol = pair.symbolByExchange?.[exchange];
   if (manualSymbol) return manualSymbol;
   const exchangeConfig = EXCHANGE_SYMBOL_CONFIG[exchange];
-  const quote = pair.quoteByExchange?.[exchange] ?? exchangeConfig.defaultQuote ?? pair.canonicalQuote;
+  const quote =
+    pair.quoteByExchange?.[exchange] ??
+    exchangeConfig.defaultQuote ??
+    pair.canonicalQuote;
 
   return formatSymbol(pair.base, quote, exchangeConfig.style);
 }
 
-export function isTickerSupportedOnExchange(ticker: TickerKey, exchange: ExchangeKey): boolean {
+export function isTickerSupportedOnExchange(
+  ticker: TickerKey,
+  exchange: ExchangeKey,
+): boolean {
   const pair = TRACKED_TICKER_DEFINITIONS[ticker];
   if (!pair) return false;
   return !pair.excludedExchanges?.includes(exchange);
@@ -452,7 +484,9 @@ export function listTrackedTickers(): TickerKey[] {
   return Object.keys(TRACKED_TICKER_DEFINITIONS) as TickerKey[];
 }
 
-export function buildTickerMap(tickers: readonly TickerKey[]): Record<TickerKey, ExchangeRecord<string>> {
+export function buildTickerMap(
+  tickers: readonly TickerKey[],
+): Record<TickerKey, ExchangeRecord<string>> {
   const tickerMap: Partial<Record<TickerKey, ExchangeRecord<string>>> = {};
 
   for (const ticker of tickers) {
@@ -462,7 +496,10 @@ export function buildTickerMap(tickers: readonly TickerKey[]): Record<TickerKey,
   return tickerMap as Record<TickerKey, ExchangeRecord<string>>;
 }
 
-export function resolveTickerFromExchangeSymbol(exchange: ExchangeKey, symbol: string): TickerKey | null {
+export function resolveTickerFromExchangeSymbol(
+  exchange: ExchangeKey,
+  symbol: string,
+): TickerKey | null {
   const parsedInput = parseVenueSymbol(exchange, symbol);
   const tickers = listTrackedTickers();
 
@@ -487,7 +524,9 @@ export type PairMappingRow = {
   symbols: ExchangeRecord<string>;
 };
 
-export function listPairMappings(tickers: readonly TickerKey[]): PairMappingRow[] {
+export function listPairMappings(
+  tickers: readonly TickerKey[],
+): PairMappingRow[] {
   return tickers.map((ticker) => {
     const symbols = buildExchangeSymbolRecord(ticker);
     const pair = TRACKED_TICKER_DEFINITIONS[ticker];

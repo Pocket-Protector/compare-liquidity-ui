@@ -12,15 +12,25 @@ import type { SpreadTimeframe } from "@/lib/timeframes";
 import { EXCHANGES } from "@/lib/constants";
 import type { ExchangeKey, TickerKey } from "@/lib/types";
 
-const HISTORICAL_TICKERS: TickerKey[] = ["BTC", "ETH", "SOL", "PAXG", "ZEC", "BONK", "XRP"];
+const HISTORICAL_TICKERS: TickerKey[] = [
+  "BTC",
+  "ETH",
+  "SOL",
+  "PAXG",
+  "ZEC",
+  "BONK",
+  "XRP",
+];
 const HISTORICAL_TICKER_SET = new Set<TickerKey>(HISTORICAL_TICKERS);
 
 export default function HomePage() {
   const [ticker, setTicker] = useState<TickerKey>("BTC");
   const [consoleMode, setConsoleMode] = useState<ConsoleMode>("realtime");
   const [timeframe, setTimeframe] = useState<SpreadTimeframe>("1h");
-  const [activeExchanges, setActiveExchanges] = useState<ExchangeKey[]>(EXCHANGES);
-  const { statuses, lastRefreshAt, hasData, isLoading } = useLiquidityPoll(ticker);
+  const [activeExchanges, setActiveExchanges] =
+    useState<ExchangeKey[]>(EXCHANGES);
+  const { statuses, lastRefreshAt, hasData, isLoading } =
+    useLiquidityPoll(ticker);
 
   useEffect(() => {
     if (consoleMode !== "historical") return;
@@ -46,9 +56,12 @@ export default function HomePage() {
         <section className="panel relative z-10 space-y-4">
           <div className="space-y-2">
             <p className="label">Console</p>
-            <h2 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-4xl">{ticker} Liquidity Dashboard</h2>
+            <h2 className="text-3xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+              {ticker} Liquidity Dashboard
+            </h2>
             <p className="max-w-2xl text-sm text-[var(--text-secondary)]">
-              Monitoring Hyperliquid, dYdX, Lighter, AsterDEX, Binance, and Bybit in near real time.
+              Monitoring Hyperliquid, dYdX, Lighter, AsterDEX, Binance, and
+              Bybit in near real time.
             </p>
           </div>
 
@@ -57,10 +70,16 @@ export default function HomePage() {
               label="Select Ticker"
               value={ticker}
               onChange={setTicker}
-              allowedTickers={consoleMode === "historical" ? HISTORICAL_TICKERS : undefined}
+              allowedTickers={
+                consoleMode === "historical" ? HISTORICAL_TICKERS : undefined
+              }
             />
             <ModeSelector value={consoleMode} onChange={setConsoleMode} />
-            <TimeframeSelector value={timeframe} onChange={setTimeframe} disabled={consoleMode !== "historical"} />
+            <TimeframeSelector
+              value={timeframe}
+              onChange={setTimeframe}
+              disabled={consoleMode !== "historical"}
+            />
           </div>
 
           <SpreadCards
@@ -73,7 +92,9 @@ export default function HomePage() {
         {isLoading && !hasData ? (
           <section className="panel faint-grid min-h-56 animate-pulse">
             <p className="label">Loading market depth</p>
-            <p className="mt-2 text-sm text-[var(--text-secondary)]">Fetching initial order books and computing slippage tiers.</p>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              Fetching initial order books and computing slippage tiers.
+            </p>
           </section>
         ) : (
           <Dashboard

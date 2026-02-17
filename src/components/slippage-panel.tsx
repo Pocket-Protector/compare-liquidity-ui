@@ -3,7 +3,13 @@
 import type { ConsoleMode } from "./mode-selector";
 import type { SpreadTimeframe } from "@/lib/timeframes";
 import { TIMEFRAME_LABELS } from "@/lib/timeframes";
-import type { ExchangeKey, ExchangeRecord, ExchangeStatus, SpreadUnit, TickerKey } from "@/lib/types";
+import type {
+  ExchangeKey,
+  ExchangeRecord,
+  ExchangeStatus,
+  SpreadUnit,
+  TickerKey,
+} from "@/lib/types";
 import { useSlippageHistory } from "@/hooks/use-slippage-history";
 import { SlippageChart } from "./slippage-chart";
 import { SpreadCompareChart } from "./spread-compare-chart";
@@ -18,11 +24,22 @@ interface SlippagePanelProps {
   timeframe: SpreadTimeframe;
 }
 
-export function SlippagePanel({ statuses, ticker, spreadUnit, activeExchanges, consoleMode, timeframe }: SlippagePanelProps) {
+export function SlippagePanel({
+  statuses,
+  ticker,
+  spreadUnit,
+  activeExchanges,
+  consoleMode,
+  timeframe,
+}: SlippagePanelProps) {
   const isHistorical = consoleMode === "historical";
   const tfLabel = TIMEFRAME_LABELS[timeframe];
 
-  const { askData, bidData, isLoading: slippageLoading } = useSlippageHistory(
+  const {
+    askData,
+    bidData,
+    isLoading: slippageLoading,
+  } = useSlippageHistory(
     ticker,
     timeframe,
     isHistorical ? activeExchanges : [],
@@ -35,13 +52,24 @@ export function SlippagePanel({ statuses, ticker, spreadUnit, activeExchanges, c
         <div className="mb-4 space-y-1">
           <p className="label">Spread monitor</p>
           <h3 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-            {ticker} {isHistorical ? `Historical Spread — ${tfLabel}` : "Live Spread Comparison"}
+            {ticker}{" "}
+            {isHistorical
+              ? `Historical Spread — ${tfLabel}`
+              : "Live Spread Comparison"}
           </h3>
         </div>
         {isHistorical ? (
-          <SpreadHistoryChart ticker={ticker} activeExchanges={activeExchanges} timeframe={timeframe} />
+          <SpreadHistoryChart
+            ticker={ticker}
+            activeExchanges={activeExchanges}
+            timeframe={timeframe}
+          />
         ) : (
-          <SpreadCompareChart statuses={statuses} spreadUnit={spreadUnit} activeExchanges={activeExchanges} />
+          <SpreadCompareChart
+            statuses={statuses}
+            spreadUnit={spreadUnit}
+            activeExchanges={activeExchanges}
+          />
         )}
       </article>
 
@@ -54,7 +82,9 @@ export function SlippagePanel({ statuses, ticker, spreadUnit, activeExchanges, c
           </h3>
         </div>
         {slippageLoading && isHistorical && (
-          <p className="mb-2 text-xs text-[var(--text-muted)] animate-pulse">Loading…</p>
+          <p className="mb-2 text-xs text-[var(--text-muted)] animate-pulse">
+            Loading…
+          </p>
         )}
         <SlippageChart
           side="ask"
@@ -74,7 +104,9 @@ export function SlippagePanel({ statuses, ticker, spreadUnit, activeExchanges, c
           </h3>
         </div>
         {slippageLoading && isHistorical && (
-          <p className="mb-2 text-xs text-[var(--text-muted)] animate-pulse">Loading…</p>
+          <p className="mb-2 text-xs text-[var(--text-muted)] animate-pulse">
+            Loading…
+          </p>
         )}
         <SlippageChart
           side="bid"

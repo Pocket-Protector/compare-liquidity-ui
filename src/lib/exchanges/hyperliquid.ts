@@ -18,7 +18,13 @@ function parseLevels(levels: HyperliquidLevel[] | undefined): BookLevel[] {
       px: Number.parseFloat(level.px),
       sz: Number.parseFloat(level.sz),
     }))
-    .filter((level) => Number.isFinite(level.px) && Number.isFinite(level.sz) && level.px > 0 && level.sz > 0);
+    .filter(
+      (level) =>
+        Number.isFinite(level.px) &&
+        Number.isFinite(level.sz) &&
+        level.px > 0 &&
+        level.sz > 0,
+    );
 }
 
 export function parseHyperliquidBook(raw: unknown): NormalizedBook {
