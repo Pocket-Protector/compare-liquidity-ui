@@ -9,6 +9,7 @@ const ASTERDEX_BASE_URL = "https://fapi.asterdex.com";
 const BINANCE_BASE_URL = "https://fapi.binance.com";
 const BYBIT_BASE_URL = "https://api.bybit.com";
 const LIGHTER_CACHE_MS = 5 * 60 * 1000;
+const REQUEST_TIMEOUT_MS = 8_000;
 
 const PROXY_PREFIX = process.env.NEXT_PUBLIC_HTTP_PROXY_PREFIX ?? "";
 
@@ -49,16 +50,36 @@ async function requestJson<T = unknown>(
   url: string,
   init?: RequestInit,
 ): Promise<T> {
-  const response = await fetch(withProxy(url), {
-    ...(init ?? {}),
-    cache: "no-store",
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    controller.abort();
+  }, REQUEST_TIMEOUT_MS);
 
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} from ${url}`);
+  try {
+    const response = await fetch(withProxy(url), {
+      ...(init ?? {}),
+      cache: "no-store",
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} from ${url}`);
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "name" in error &&
+      error.name === "AbortError"
+    ) {
+      throw new Error(`Timeout after ${REQUEST_TIMEOUT_MS}ms from ${url}`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return (await response.json()) as T;
 }
 
 async function refreshLighterMarketCache(): Promise<void> {

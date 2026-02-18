@@ -42,11 +42,34 @@ function hasPartialFill(analysis: LiquidityAnalysis): boolean {
 }
 
 function formatError(error: unknown): string {
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) {
+    if (/^Timeout after \d+ms/.test(error.message)) {
+      return "Request timed out";
+    }
+    return error.message;
+  }
   return "Unknown polling error";
 }
 
 const HYPERLIQUID_SIG_FIGS = [5, 4, 3, 2] as const;
+
+async function pollExchange(
+  exchange: ExchangeKey,
+  ticker: TickerKey,
+): Promise<PollOutcome> {
+  if (exchange === "hyperliquid") {
+    return pollHyperliquid(ticker);
+  }
+
+  if (exchange === "lighter") {
+    return pollLighter(ticker);
+  }
+
+  const raw = await fetchOrderbookRaw(exchange, ticker);
+  const book = EXCHANGE_REGISTRY[exchange].parse(raw);
+  const analysis = analyzeBook({ ticker, exchange, book });
+  return { exchange, analysis, book };
+}
 
 async function pollHyperliquid(ticker: TickerKey): Promise<PollOutcome> {
   const exchange = "hyperliquid" as const;
@@ -162,7 +185,10 @@ async function pollLighter(ticker: TickerKey): Promise<PollOutcome> {
   }
 }
 
-export function useLiquidityPoll(ticker: TickerKey): {
+export function useLiquidityPoll(
+  ticker: TickerKey,
+  activeExchanges: readonly ExchangeKey[] = EXCHANGES,
+): {
   statuses: ExchangeRecord<ExchangeStatus>;
   lastRefreshAt: number | null;
   hasData: boolean;
@@ -171,12 +197,20 @@ export function useLiquidityPoll(ticker: TickerKey): {
   const [statuses, setStatuses] = useState<ExchangeRecord<ExchangeStatus>>(() =>
     createInitialStatuses(),
   );
-  const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null);
   const inFlightRef = useRef(false);
+  const pollRunIdRef = useRef(0);
+  const monitoredExchanges = useMemo(
+    () =>
+      EXCHANGES.filter(
+        (exchange) =>
+          activeExchanges.includes(exchange) &&
+          isTickerSupportedOnExchange(ticker, exchange),
+      ),
+    [activeExchanges, ticker],
+  );
 
   useEffect(() => {
     setStatuses(createInitialStatuses());
-    setLastRefreshAt(null);
   }, [ticker]);
 
   useEffect(() => {
@@ -185,80 +219,67 @@ export function useLiquidityPoll(ticker: TickerKey): {
     const poll = async () => {
       if (inFlightRef.current) return;
       inFlightRef.current = true;
-      const supportedExchanges = EXCHANGES.filter((exchange) =>
-        isTickerSupportedOnExchange(ticker, exchange),
-      );
+      const runId = ++pollRunIdRef.current;
+      const monitoredSet = new Set(monitoredExchanges);
 
       setStatuses((prev) => {
         const next = { ...prev };
         for (const exchange of EXCHANGES) {
-          const isSupported = supportedExchanges.includes(exchange);
+          const isMonitored = monitoredSet.has(exchange);
           next[exchange] = {
             ...next[exchange],
-            loading: isSupported,
-            error: null,
-            analysis: isSupported ? next[exchange].analysis : null,
-            book: isSupported ? next[exchange].book : null,
-            lastUpdated: isSupported ? next[exchange].lastUpdated : null,
+            loading: isMonitored,
+            error: isMonitored ? null : next[exchange].error,
           };
         }
         return next;
       });
 
-      const settled = await Promise.allSettled(
-        supportedExchanges.map(async (exchange): Promise<PollOutcome> => {
-          if (exchange === "hyperliquid") {
-            return pollHyperliquid(ticker);
-          }
-
-          if (exchange === "lighter") {
-            return pollLighter(ticker);
-          }
-
-          const raw = await fetchOrderbookRaw(exchange, ticker);
-          const book = EXCHANGE_REGISTRY[exchange].parse(raw);
-          const analysis = analyzeBook({ ticker, exchange, book });
-          return { exchange, analysis, book };
-        }),
-      );
-
-      if (!active) {
-        inFlightRef.current = false;
+      let pending = monitoredExchanges.length;
+      if (pending === 0) {
+        if (pollRunIdRef.current === runId) {
+          inFlightRef.current = false;
+        }
         return;
       }
 
-      const now = Date.now();
-      setStatuses((prev) => {
-        const next = { ...prev };
+      const markDone = () => {
+        pending -= 1;
+        if (pending === 0 && pollRunIdRef.current === runId) {
+          inFlightRef.current = false;
+        }
+      };
 
-        settled.forEach((result, index) => {
-          const exchange = supportedExchanges[index];
-
-          if (result.status === "fulfilled") {
-            const { analysis, book } = result.value;
-            next[exchange] = {
-              exchange,
-              loading: false,
-              error: null,
-              lastUpdated: analysis.timestamp || now,
-              analysis,
-              book,
-            };
-            return;
-          }
-
-          next[exchange] = {
-            ...prev[exchange],
-            loading: false,
-            error: formatError(result.reason),
-          };
-        });
-
-        return next;
-      });
-
-      setLastRefreshAt(now);
-      inFlightRef.current = false;
+      for (const exchange of monitoredExchanges) {
+        void pollExchange(exchange, ticker)
+          .then(({ analysis, book }) => {
+            if (!active || pollRunIdRef.current !== runId) return;
+            const now = Date.now();
+            setStatuses((prev) => ({
+              ...prev,
+              [exchange]: {
+                exchange,
+                loading: false,
+                error: null,
+                lastUpdated: now,
+                analysis,
+                book,
+              },
+            }));
+          })
+          .catch((error: unknown) => {
+            if (!active || pollRunIdRef.current !== runId) return;
+            setStatuses((prev) => ({
+              ...prev,
+              [exchange]: {
+                ...prev[exchange],
+                loading: false,
+                error: formatError(error),
+              },
+            }));
+          })
+          .finally(markDone);
+      }
     };
 
     void poll();
@@ -268,24 +289,34 @@ export function useLiquidityPoll(ticker: TickerKey): {
 
     return () => {
       active = false;
+      pollRunIdRef.current += 1;
+      inFlightRef.current = false;
       window.clearInterval(timer);
     };
-  }, [ticker]);
+  }, [monitoredExchanges, ticker]);
+
+  const lastRefreshAt = useMemo(() => {
+    const refreshes = monitoredExchanges
+      .map((exchange) => statuses[exchange].lastUpdated)
+      .filter((value): value is number => typeof value === "number");
+    if (refreshes.length === 0) return null;
+    return Math.max(...refreshes);
+  }, [monitoredExchanges, statuses]);
 
   const hasData = useMemo(
-    () => EXCHANGES.some((exchange) => Boolean(statuses[exchange].analysis)),
-    [statuses],
+    () =>
+      monitoredExchanges.some((exchange) =>
+        Boolean(statuses[exchange].analysis),
+      ),
+    [monitoredExchanges, statuses],
   );
 
   const isLoading = useMemo(() => {
-    const supported = EXCHANGES.filter((exchange) =>
-      isTickerSupportedOnExchange(ticker, exchange),
-    );
-    if (supported.length === 0) return false;
-    return supported.every(
+    if (monitoredExchanges.length === 0) return false;
+    return monitoredExchanges.every(
       (exchange) => statuses[exchange].loading && !statuses[exchange].analysis,
     );
-  }, [statuses, ticker]);
+  }, [monitoredExchanges, statuses]);
 
   return {
     statuses,

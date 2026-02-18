@@ -11,12 +11,14 @@ import {
 import { formatTier } from "@/lib/format";
 import { useSlippageHistory } from "@/hooks/use-slippage-history";
 import type { SpreadTimeframe } from "@/lib/timeframes";
-import type { ExchangeKey, TickerKey } from "@/lib/types";
+import { getFeeBps } from "@/lib/fee-defaults";
+import type { ExchangeKey, FeeConfig, TickerKey } from "@/lib/types";
 
 interface HistoricalDepthChartProps {
   ticker: TickerKey;
   timeframe: SpreadTimeframe;
   activeExchanges: ExchangeKey[];
+  feeConfig: FeeConfig;
 }
 
 type DepthPoint = [number, number];
@@ -51,6 +53,7 @@ export function HistoricalDepthChart({
   ticker,
   timeframe,
   activeExchanges,
+  feeConfig,
 }: HistoricalDepthChartProps) {
   const { askData, bidData, isLoading, error } = useSlippageHistory(
     ticker,
@@ -86,6 +89,7 @@ export function HistoricalDepthChart({
 
   const curves = useMemo<ExchangeDepthCurve[]>(() => {
     return activeExchanges.flatMap((exchange) => {
+      const feeBps = getFeeBps(feeConfig, exchange);
       const askPoints: DepthPoint[] = [[0, 0]];
       const bidPoints: DepthPoint[] = [[0, 0]];
 
@@ -94,15 +98,15 @@ export function HistoricalDepthChart({
         if (yPos == null) return;
         const askBps = toFinite(askData[idx]?.[exchange]);
         const bidBps = toFinite(bidData[idx]?.[exchange]);
-        if (askBps != null) askPoints.push([askBps, yPos]);
-        if (bidBps != null) bidPoints.push([-Math.abs(bidBps), yPos]);
+        if (askBps != null) askPoints.push([askBps + feeBps, yPos]);
+        if (bidBps != null) bidPoints.push([-Math.abs(bidBps) - feeBps, yPos]);
       });
 
       if (askPoints.length === 1 && bidPoints.length === 1) return [];
 
       return [{ exchange, ask: askPoints, bid: bidPoints }];
     });
-  }, [activeExchanges, askData, bidData, tierToY, tiersToUse]);
+  }, [activeExchanges, askData, bidData, feeConfig, tierToY, tiersToUse]);
 
   const maxAbsBps = useMemo(() => {
     return curves.reduce((acc, curve) => {

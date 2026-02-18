@@ -8,6 +8,7 @@ import type {
   ExchangeKey,
   ExchangeRecord,
   ExchangeStatus,
+  FeeConfig,
   SpreadUnit,
   TickerKey,
 } from "@/lib/types";
@@ -25,6 +26,7 @@ interface DashboardProps {
   activeExchanges: ExchangeKey[];
   consoleMode: ConsoleMode;
   timeframe: SpreadTimeframe;
+  feeConfig: FeeConfig;
 }
 
 export function Dashboard({
@@ -34,6 +36,7 @@ export function Dashboard({
   activeExchanges,
   consoleMode,
   timeframe,
+  feeConfig,
 }: DashboardProps) {
   const [spreadUnit, setSpreadUnit] = useState<SpreadUnit>("bps");
   const failedExchanges = activeExchanges.filter((exchange) =>
@@ -60,6 +63,7 @@ export function Dashboard({
         activeExchanges={activeExchanges}
         consoleMode={consoleMode}
         timeframe={timeframe}
+        feeConfig={feeConfig}
       />
 
       {isHistorical ? (
@@ -78,6 +82,7 @@ export function Dashboard({
             ticker={ticker}
             activeExchanges={activeExchanges}
             timeframe={timeframe}
+            feeConfig={feeConfig}
           />
         </section>
       ) : (
@@ -87,6 +92,7 @@ export function Dashboard({
           lastRefreshAt={lastRefreshAt}
           spreadUnit={spreadUnit}
           activeExchanges={activeExchanges}
+          feeConfig={feeConfig}
           onToggleUnit={() =>
             setSpreadUnit((u) => (u === "bps" ? "pct" : "bps"))
           }
@@ -129,12 +135,14 @@ export function Dashboard({
             ticker={ticker}
             timeframe={timeframe}
             activeExchanges={activeExchanges}
+            feeConfig={feeConfig}
           />
         ) : (
           <DepthChart
             statuses={statuses}
             ticker={ticker}
             activeExchanges={activeExchanges}
+            feeConfig={feeConfig}
           />
         )}
       </section>

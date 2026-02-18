@@ -16,10 +16,12 @@ import {
   NOTIONAL_TIERS,
 } from "@/lib/constants";
 import { formatTier } from "@/lib/format";
+import { getFeeBps } from "@/lib/fee-defaults";
 import type {
   ExchangeKey,
   ExchangeRecord,
   ExchangeStatus,
+  FeeConfig,
   SpreadUnit,
 } from "@/lib/types";
 import type { SlippageMedianDatum } from "@/hooks/use-slippage-history";
@@ -29,6 +31,7 @@ interface SlippageChartProps {
   statuses: ExchangeRecord<ExchangeStatus>;
   spreadUnit: SpreadUnit;
   activeExchanges: ExchangeKey[];
+  feeConfig: FeeConfig;
   historicalData?: SlippageMedianDatum[];
 }
 
@@ -114,17 +117,34 @@ export function SlippageChart({
   statuses,
   spreadUnit,
   activeExchanges,
+  feeConfig,
   historicalData,
 }: SlippageChartProps) {
   const data: ChartDatum[] = historicalData
-    ? historicalData
+    ? historicalData.map((row) => {
+        const adjusted: ChartDatum = { tier: row.tier };
+        for (const exchange of activeExchanges) {
+          const raw = row[exchange];
+          if (typeof raw === "number") {
+            adjusted[exchange] = Number(
+              (raw + getFeeBps(feeConfig, exchange)).toFixed(2),
+            );
+          } else {
+            adjusted[exchange] = null;
+          }
+        }
+        return adjusted;
+      })
     : NOTIONAL_TIERS.map((tier, idx) => {
         const row: ChartDatum = { tier: formatTier(tier) };
         for (const exchange of activeExchanges) {
           const analysis = statuses[exchange].analysis;
           const point =
             side === "ask" ? analysis?.asks[idx] : analysis?.bids[idx];
-          row[exchange] = point ? Number(point.slippageBps.toFixed(2)) : null;
+          const feeBps = getFeeBps(feeConfig, exchange);
+          row[exchange] = point
+            ? Number((point.slippageBps + feeBps).toFixed(2))
+            : null;
         }
         return row;
       });
