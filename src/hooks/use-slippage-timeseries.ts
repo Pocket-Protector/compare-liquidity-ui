@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ExchangeKey, TickerKey } from "@/lib/types";
 import {
-  fetchSlippageTimeSeriesForExchange,
+  streamSlippageTimeSeriesForExchange,
   isSupabaseConfigured,
   type SlippageTimeSeriesRow,
 } from "@/lib/supabase";
@@ -44,14 +44,14 @@ function toHourBucket(iso: string): string {
 }
 
 function buildMinutePoints(
-  allRows: { exchange: string; rows: SlippageTimeSeriesRow[] }[],
+  allRows: Map<string, SlippageTimeSeriesRow[]>,
   tier: SlippageTier,
 ): SlippageTsPoint[] {
   const askCol = TIER_ASK_COL[tier];
   const bidCol = TIER_BID_COL[tier];
   const byTime = new Map<string, SlippageTsPoint>();
 
-  for (const { exchange, rows } of allRows) {
+  for (const [exchange, rows] of allRows) {
     for (const row of rows) {
       const t = row.ts_minute_utc;
       if (!byTime.has(t)) byTime.set(t, { time: t });
@@ -67,7 +67,7 @@ function buildMinutePoints(
 }
 
 function buildHourlyPoints(
-  allRows: { exchange: string; rows: SlippageTimeSeriesRow[] }[],
+  allRows: Map<string, SlippageTimeSeriesRow[]>,
   tier: SlippageTier,
 ): SlippageTsPoint[] {
   const askCol = TIER_ASK_COL[tier];
@@ -76,7 +76,7 @@ function buildHourlyPoints(
   // bucket -> exchange_side -> values
   const groups = new Map<string, Map<string, number[]>>();
 
-  for (const { exchange, rows } of allRows) {
+  for (const [exchange, rows] of allRows) {
     for (const row of rows) {
       const bucket = toHourBucket(row.ts_minute_utc);
       if (!groups.has(bucket)) groups.set(bucket, new Map());
@@ -145,23 +145,27 @@ export function useSlippageTimeSeries(
     try {
       const fromIso = getFromDate(timeframe).toISOString();
 
-      const allRows = await Promise.all(
-        exchanges.map(async (exchange) => ({
-          exchange,
-          rows: await fetchSlippageTimeSeriesForExchange(
-            ticker,
-            exchange,
-            fromIso,
-          ),
-        })),
+      // Accumulate rows per exchange; update chart after every arriving page.
+      const exchangeRows = new Map<string, SlippageTimeSeriesRow[]>(
+        exchanges.map((ex) => [ex, []]),
       );
 
-      if (requestId !== requestIdRef.current) return;
+      const isHourly = timeframe !== "1h" && timeframe !== "4h";
 
-      if (timeframe === "1h" || timeframe === "4h") {
-        setData(buildMinutePoints(allRows, tier));
-      } else {
-        setData(buildHourlyPoints(allRows, tier));
+      for (const exchange of exchanges) {
+        for await (const page of streamSlippageTimeSeriesForExchange(
+          ticker,
+          exchange,
+          fromIso,
+        )) {
+          if (requestId !== requestIdRef.current) return;
+          exchangeRows.get(exchange)!.push(...page);
+          setData(
+            isHourly
+              ? buildHourlyPoints(exchangeRows, tier)
+              : buildMinutePoints(exchangeRows, tier),
+          );
+        }
       }
     } catch (err) {
       if (requestId !== requestIdRef.current) return;

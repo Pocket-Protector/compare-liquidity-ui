@@ -24,21 +24,18 @@ export function isSupabaseConfigured(): boolean {
 }
 
 /**
- * Paginated GET against a PostgREST table endpoint.
- * Pages through 1000-row chunks until fewer than PAGE_SIZE rows are returned.
+ * Streams rows page by page (1 000 rows at a time).
+ * Omits `count=exact` so PostgREST never runs a full COUNT(*) — that was
+ * the cause of the statement-timeout errors on large timeframes.
  */
-async function fetchAllPages<T>(url: string): Promise<T[]> {
-  const all: T[] = [];
+async function* streamPages<T>(url: string): AsyncGenerator<T[]> {
   let offset = 0;
-
-   
   while (true) {
     const rangeEnd = offset + PAGE_SIZE - 1;
     const res = await fetch(url, {
       headers: {
         ...authHeaders(),
         Range: `${offset}-${rangeEnd}`,
-        Prefer: "count=exact",
       },
     });
 
@@ -47,12 +44,22 @@ async function fetchAllPages<T>(url: string): Promise<T[]> {
     await throwOnError(res, "depth_metrics");
 
     const rows: T[] = await res.json();
-    all.push(...rows);
-
+    if (rows.length > 0) yield rows;
     if (rows.length < PAGE_SIZE) break;
     offset += PAGE_SIZE;
   }
+}
 
+/**
+ * Collects all pages into a single array.
+ * Used only for small timeframes (1 h / 4 h) where the full result fits
+ * comfortably within the DB statement timeout.
+ */
+async function fetchAllPages<T>(url: string): Promise<T[]> {
+  const all: T[] = [];
+  for await (const page of streamPages<T>(url)) {
+    all.push(...page);
+  }
   return all;
 }
 
@@ -83,11 +90,11 @@ export async function fetchMinuteSpreadData(
   );
 }
 
-export async function fetchMinuteSpreadForExchange(
+export function streamMinuteSpreadForExchange(
   ticker: string,
   exchange: string,
   fromUtc: string,
-): Promise<DepthMetricRow[]> {
+): AsyncGenerator<DepthMetricRow[]> {
   const qs = [
     `ticker=eq.${ticker}`,
     `exchange=eq.${exchange}`,
@@ -97,7 +104,7 @@ export async function fetchMinuteSpreadForExchange(
     `select=ts_minute_utc,exchange,spread_bps`,
   ].join("&");
 
-  return fetchAllPages<DepthMetricRow>(
+  return streamPages<DepthMetricRow>(
     `${SUPABASE_URL}/rest/v1/depth_metrics?${qs}`,
   );
 }
@@ -110,11 +117,11 @@ export interface MidPriceRow {
   mid_price: number | null;
 }
 
-export async function fetchMidPriceForExchange(
+export function streamMidPriceForExchange(
   ticker: string,
   exchange: string,
   fromUtc: string,
-): Promise<MidPriceRow[]> {
+): AsyncGenerator<MidPriceRow[]> {
   const qs = [
     `ticker=eq.${ticker}`,
     `exchange=eq.${exchange}`,
@@ -124,7 +131,7 @@ export async function fetchMidPriceForExchange(
     `select=ts_minute_utc,exchange,mid_price`,
   ].join("&");
 
-  return fetchAllPages<MidPriceRow>(
+  return streamPages<MidPriceRow>(
     `${SUPABASE_URL}/rest/v1/depth_metrics?${qs}`,
   );
 }
@@ -153,11 +160,11 @@ export interface SlippageTimeSeriesRow extends SlippageMetricRow {
   ts_minute_utc: string;
 }
 
-export async function fetchSlippageForExchange(
+export function streamSlippageForExchange(
   ticker: string,
   exchange: string,
   fromUtc: string,
-): Promise<SlippageMetricRow[]> {
+): AsyncGenerator<SlippageMetricRow[]> {
   const qs = [
     `ticker=eq.${ticker}`,
     `exchange=eq.${exchange}`,
@@ -167,16 +174,16 @@ export async function fetchSlippageForExchange(
     `select=${SLIPPAGE_COLS}`,
   ].join("&");
 
-  return fetchAllPages<SlippageMetricRow>(
+  return streamPages<SlippageMetricRow>(
     `${SUPABASE_URL}/rest/v1/depth_metrics?${qs}`,
   );
 }
 
-export async function fetchSlippageTimeSeriesForExchange(
+export function streamSlippageTimeSeriesForExchange(
   ticker: string,
   exchange: string,
   fromUtc: string,
-): Promise<SlippageTimeSeriesRow[]> {
+): AsyncGenerator<SlippageTimeSeriesRow[]> {
   const qs = [
     `ticker=eq.${ticker}`,
     `exchange=eq.${exchange}`,
@@ -186,7 +193,7 @@ export async function fetchSlippageTimeSeriesForExchange(
     `select=${SLIPPAGE_TS_COLS}`,
   ].join("&");
 
-  return fetchAllPages<SlippageTimeSeriesRow>(
+  return streamPages<SlippageTimeSeriesRow>(
     `${SUPABASE_URL}/rest/v1/depth_metrics?${qs}`,
   );
 }

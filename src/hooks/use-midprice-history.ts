@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ExchangeKey, TickerKey } from "@/lib/types";
 import {
-  fetchMidPriceForExchange,
+  streamMidPriceForExchange,
   isSupabaseConfigured,
   type MidPriceRow,
 } from "@/lib/supabase";
@@ -103,28 +103,31 @@ export function useMidPriceHistory(
       const from = getFromDate(timeframe);
       const fromIso = from.toISOString();
 
-      // Always fetch per-exchange (needed for hourly medians on 1d/7d)
-      const allRows = (
-        await Promise.all(
-          exchanges.map((ex) => fetchMidPriceForExchange(ticker, ex, fromIso)),
-        )
-      ).flat();
+      // Stream each exchange page by page, updating the chart after every page.
+      const accumulated: MidPriceRow[] = [];
 
-      if (requestId !== requestIdRef.current) return;
+      for (const ex of exchanges) {
+        for await (const page of streamMidPriceForExchange(
+          ticker,
+          ex,
+          fromIso,
+        )) {
+          if (requestId !== requestIdRef.current) return;
+          accumulated.push(...page);
 
-      if (timeframe === "1h" || timeframe === "4h") {
-        const flat = allRows
-          .filter((r) => r.mid_price != null)
-          .map((r) => ({
-            time: r.ts_minute_utc,
-            exchange: r.exchange,
-            mid_price: r.mid_price as number,
-          }));
-
-        setData(pivotByTime(flat));
-      } else {
-        const hourly = computeHourlyMedians(allRows);
-        setData(pivotByTime(hourly));
+          if (timeframe === "1h" || timeframe === "4h") {
+            const flat = accumulated
+              .filter((r) => r.mid_price != null)
+              .map((r) => ({
+                time: r.ts_minute_utc,
+                exchange: r.exchange,
+                mid_price: r.mid_price as number,
+              }));
+            setData(pivotByTime(flat));
+          } else {
+            setData(pivotByTime(computeHourlyMedians(accumulated)));
+          }
+        }
       }
     } catch (err) {
       if (requestId !== requestIdRef.current) return;

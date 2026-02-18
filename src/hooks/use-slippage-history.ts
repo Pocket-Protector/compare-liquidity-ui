@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ExchangeKey, TickerKey } from "@/lib/types";
 import {
-  fetchSlippageForExchange,
+  streamSlippageForExchange,
   isSupabaseConfigured,
   type SlippageMetricRow,
 } from "@/lib/supabase";
@@ -85,41 +85,51 @@ export function useSlippageHistory(
     try {
       const fromIso = getFromDate(timeframe).toISOString();
 
-      const perExchange = await Promise.all(
-        exchanges.map(async (exchange) => {
-          const rows = await fetchSlippageForExchange(
-            ticker,
-            exchange,
-            fromIso,
-          );
-          return { exchange, rows };
-        }),
+      // Accumulate rows per exchange; update charts after every arriving page.
+      const exchangeRows = new Map<string, SlippageMetricRow[]>(
+        exchanges.map((ex) => [ex, []]),
       );
 
-      if (requestId !== requestIdRef.current) return;
+      const updateCharts = () => {
+        const askRows: SlippageMedianDatum[] = NOTIONAL_TIERS.map(
+          (tier, idx) => {
+            const datum: SlippageMedianDatum = { tier: formatTier(tier) };
+            for (const [exchange, rows] of exchangeRows) {
+              const medians = computeMedianSlippage(rows, "ask");
+              datum[exchange as ExchangeKey] =
+                medians[idx] != null ? Number(medians[idx]!.toFixed(2)) : null;
+            }
+            return datum;
+          },
+        );
 
-      const askRows: SlippageMedianDatum[] = NOTIONAL_TIERS.map((tier, idx) => {
-        const datum: SlippageMedianDatum = { tier: formatTier(tier) };
-        for (const { exchange, rows } of perExchange) {
-          const medians = computeMedianSlippage(rows, "ask");
-          datum[exchange as ExchangeKey] =
-            medians[idx] != null ? Number(medians[idx]!.toFixed(2)) : null;
+        const bidRows: SlippageMedianDatum[] = NOTIONAL_TIERS.map(
+          (tier, idx) => {
+            const datum: SlippageMedianDatum = { tier: formatTier(tier) };
+            for (const [exchange, rows] of exchangeRows) {
+              const medians = computeMedianSlippage(rows, "bid");
+              datum[exchange as ExchangeKey] =
+                medians[idx] != null ? Number(medians[idx]!.toFixed(2)) : null;
+            }
+            return datum;
+          },
+        );
+
+        setAskData(askRows);
+        setBidData(bidRows);
+      };
+
+      for (const exchange of exchanges) {
+        for await (const page of streamSlippageForExchange(
+          ticker,
+          exchange,
+          fromIso,
+        )) {
+          if (requestId !== requestIdRef.current) return;
+          exchangeRows.get(exchange)!.push(...page);
+          updateCharts();
         }
-        return datum;
-      });
-
-      const bidRows: SlippageMedianDatum[] = NOTIONAL_TIERS.map((tier, idx) => {
-        const datum: SlippageMedianDatum = { tier: formatTier(tier) };
-        for (const { exchange, rows } of perExchange) {
-          const medians = computeMedianSlippage(rows, "bid");
-          datum[exchange as ExchangeKey] =
-            medians[idx] != null ? Number(medians[idx]!.toFixed(2)) : null;
-        }
-        return datum;
-      });
-
-      setAskData(askRows);
-      setBidData(bidRows);
+      }
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
       setError(

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { ExchangeKey, TickerKey } from "@/lib/types";
 import {
   fetchMinuteSpreadData,
-  fetchMinuteSpreadForExchange,
+  streamMinuteSpreadForExchange,
   isSupabaseConfigured,
   type DepthMetricRow,
 } from "@/lib/supabase";
@@ -122,18 +122,20 @@ export function useSpreadHistory(
 
         setData(pivotByTime(flat));
       } else {
-        const allRows = (
-          await Promise.all(
-            exchanges.map((ex) =>
-              fetchMinuteSpreadForExchange(ticker, ex, fromIso),
-            ),
-          )
-        ).flat();
+        // Stream each exchange page by page, updating the chart after every page.
+        const accumulated: DepthMetricRow[] = [];
 
-        if (requestId !== requestIdRef.current) return;
-
-        const hourly = computeHourlyMedians(allRows);
-        setData(pivotByTime(hourly));
+        for (const ex of exchanges) {
+          for await (const page of streamMinuteSpreadForExchange(
+            ticker,
+            ex,
+            fromIso,
+          )) {
+            if (requestId !== requestIdRef.current) return;
+            accumulated.push(...page);
+            setData(pivotByTime(computeHourlyMedians(accumulated)));
+          }
+        }
       }
     } catch (err) {
       if (requestId !== requestIdRef.current) return;
